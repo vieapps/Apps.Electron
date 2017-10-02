@@ -8,6 +8,7 @@ Steps to use:
 - Create the folder named "www", and copy all your files of ready-to-go app into this
 - Replace the icons (in the "build" folder) by your app icon - use this convert tool (https://iconverticons.com/online/) if you need to create icon files from your PNG image
 - Type "npm install" to install all dependencies (in terminal/command prompt, of course)
+- Type "npm run electron" to test your "desktop" app that packed with Electron
 - Type "npm run ebuild" to build the distribution of your app (your distribution file is .DMG file if you build on macOS, .EXE file if you build on Windows, .AppImage/.deb files if you build on Linux)
 
 For more information:
