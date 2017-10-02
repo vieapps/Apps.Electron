@@ -22,7 +22,7 @@ function createWindow() {
 		minWidth: 320,
 		minHeight: 480,
 		backgroundColor: "#fff",
-		icon: path.join(__dirname, "assets/images/icon.png")
+		icon: path.join(__dirname, "www/assets/images/icon.png")
 	});
 
 	// url to open
