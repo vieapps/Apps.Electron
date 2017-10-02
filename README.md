@@ -8,6 +8,7 @@ Steps:
 - Type "npm install" to install all dependencies (in terminal/command prompt at the project folder, of course)
 - Type "npm run electron" to test your "desktop" app that packed with Electron
 - Type "npm run ebuild" to build the distribution of your app (your distribution file is .DMG file if you run the build on macOS, .EXE file if you run the build on Windows, .AppImage/.deb files if you run the build on Linux)
+- Open the folder named "dist" to see the distributions of your "desktop" app.
 
 For testing: download the file "app for testing.zip" to use as your ready-to-go app (this is browser release of Apps.Books.PWA - https://github.com/vieapps/Apps.Books.PWA)
 
