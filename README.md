@@ -13,5 +13,5 @@ Steps:
 For testing: download the file "app for testing.zip" to use as your ready-to-go app (this is browser release of Apps.Books.PWA - https://github.com/vieapps/Apps.Books.PWA)
 
 More information:
-- Electron (Father of ATOM and Visual Studio Code): https://electron.atom.io/
-- Electron Builder (The excellent build to do this job): https://www.electron.build/
+- Electron (Mother of ATOM, GitHub Desktop, Visual Studio Code, ...): https://electron.atom.io/
+- Electron Builder (The excellent tool that does this job): https://www.electron.build/
