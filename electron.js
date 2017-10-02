@@ -33,11 +33,11 @@ function createWindow() {
 
 	// open the DevTools of Chromium
 	let args = process.argv.slice(2);
-  args.forEach((arg) => {
-	  if (arg === "devtools") {
-      mainWindow.webContents.openDevTools();
-  	}
-  });
+	args.forEach((arg) => {
+		if (arg === "devtools") {
+			mainWindow.webContents.openDevTools();
+		}
+	});
 
 	// emitted when the window is closed
 	mainWindow.on("closed", () => {
