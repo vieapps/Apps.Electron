@@ -9,6 +9,10 @@ Steps:
 - Type "npm run electron" to test your "desktop" app that packed with Electron
 - Type "npm run ebuild" to build the distribution of your app (your distribution file is .DMG file if you run the build on macOS, .EXE file if you run the build on Windows, .AppImage/.deb files if you run the build on Linux)
 
+For testing:
+- Download the file "app for testing.zip" to use as ready-to-go app
+- The file "app for testing.zip" is browser release of Apps.Books.PWA (https://github.com/vieapps/Apps.Books.PWA)
+
 More information:
 - Electron (Father of ATOM and Visual Studio Code): https://electron.atom.io/
 - Electron Builder (The excellent build to do this job): https://www.electron.build/
