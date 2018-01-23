@@ -12,8 +12,8 @@
   "license": "MIT",
   "build": {
     "appId": "net.vieapps.apps",
-    "copyright": "Copyright © 2017 VIEApps.net",
-    "electronVersion": "1.7.8",
+    "copyright": "Copyright © 2018 VIEApps.net",
+    "electronVersion": "1.7.11",
     "asar": false,
     "files": [
       "www/**/*",
@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@types/electron": "^1.6.10",
-    "electron": "^1.7.8",
-    "electron-builder": "^19.33.0"
+    "electron": "^1.7.11",
+    "electron-builder": "^19.54.0"
   }
 }
