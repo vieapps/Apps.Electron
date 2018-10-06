@@ -1,20 +1,16 @@
-// main components
-"use strict";
-
 const path = require("path");
+const console = require("console");
 const electron = require("electron");
 const log = require("electron-log");
-const console = require("console");
-
 const { autoUpdater } = require("electron-updater");
 
 const environment = {
-	icon: path.join(__dirname, "src/main/assets/images/icon.png"),
-	isDevelopment: process.argv.slice(2).find(arg => arg === "/dev" || arg === "/devenv") !== undefined,
+	icon: path.join(__dirname, "src/app-primary/assets/images/icon.png"),
+	isDebug: process.argv.slice(2).find(arg => arg === "/dev" || arg === "/debug") !== undefined,
 	openDevTools: process.argv.slice(2).find(arg => arg === "/dev" || arg === "/devtools") !== undefined,
 	checkingForUpdates: false,
 	app: {
-		id: "ngx-apps",
+		id: "vieapps-ngx",
 		name: "VIEApps",
 		description: "Wonderful apps from VIEApps.net",
 		version: "1.0.0",
@@ -25,68 +21,173 @@ const environment = {
 	}
 };
 
-let mainWindow, aboutWindow, updateWindow;
-
 // -----------------------------------------------------
 
-// create main window
-function createMainWindow() {
-	mainWindow = new electron.BrowserWindow({
-		width: 1280,
-		height: 800,
-		minWidth: 320,
-		minHeight: 480,
-		icon: environment.icon
-	});
-	if (environment.openDevTools) {
-		mainWindow.webContents.openDevTools();
+let primaryAppWindow, secondaryAppWindow, aboutWindow, updateWindow;
+
+function createWindow(options, url, onClose, onClosed, onDomReady) {
+	const window = new electron.BrowserWindow(options);
+	window.loadURL(url);
+	if (onClose !== undefined) {
+		window.on("close", $event => onClose($event));
 	}
-	mainWindow.loadURL(path.join("file://", __dirname, "src/main/index.html"));
-	mainWindow.on("close", $event => {
-		if (electron.app.willQuit) {
-			mainWindow = undefined;
-		}
-		else {
-			$event.preventDefault()
-			mainWindow.hide();
-		}
-	});
-	mainWindow.on("closed", () => mainWindow = undefined);
-	mainWindow.webContents.once("dom-ready", () => mainWindow.webContents.send("window.main", {
-		type: "dom-ready",
-		environment: environment
-	}));
+	if (onClosed !== undefined) {
+		window.on("closed", $event => onClosed($event));
+	}
+	if (onDomReady !== undefined) {
+		window.webContents.once("dom-ready", $event => onDomReady($event));
+	}
+	if (environment.openDevTools) {
+		window.webContents.openDevTools({ mode: "detach" });
+	}
+	return window;
 }
 
-function showAboutWindow() {
-	if (aboutWindow === undefined) {
-		aboutWindow = new electron.BrowserWindow({ width: 550, height: 260, parent: mainWindow, frame: false });
-		aboutWindow.loadURL(path.join("file://", __dirname, "src/about/index.html"));
-		aboutWindow.on("close", $event => {
-			if (electron.app.willQuit) {
-				aboutWindow = undefined;
-			}
-			else {
-				$event.preventDefault()
-				aboutWindow.hide();
-			}
-		});
-		aboutWindow.on("closed", () => aboutWindow = undefined);
-		aboutWindow.webContents.once("dom-ready", () => aboutWindow.webContents.send("window.about", {
-			type: "dom-ready",
-			environment: environment
-		}));
+function showWindow(window, onNext) {
+	if (window !== undefined) {
+		window.show();
+	}
+	if (onNext !== undefined) {
+		onNext();
+	}
+}
+
+function closeWindow(window, event) {
+	if (electron.app.willQuit) {
+		return undefined;
 	}
 	else {
-		aboutWindow.show();
+		event.preventDefault();
+		window.hide();
+		return window;
+	}
+}
+
+function sendMessage(window, event, data, onNext) {
+	if (window !== undefined) {
+		window.webContents.send(event, data);
+	}
+	if (onNext !== undefined) {
+		onNext();
+	}
+}
+
+function sendMessageToApp(appWindow, event, args, onNext) {
+	sendMessage(appWindow, "electron.ipc2app", { event: event, args: args }, onNext);
+}
+
+function sendMessageToPrimaryApp(event, args, onNext) {
+	sendMessageToApp(primaryAppWindow, event, args, onNext);
+}
+
+function sendMessageToSecondaryApp(event, args, onNext) {
+	sendMessageToApp(secondaryAppWindow, event, args, onNext);
+}
+
+function createPrimaryAppWindow(onNext) {
+	if (primaryAppWindow === undefined) {
+		primaryAppWindow = createWindow(
+			{
+				width: 1280,
+				height: 800,
+				minWidth: 320,
+				minHeight: 480,
+				icon: environment.icon
+			},
+			path.join("file://", __dirname, "src/app-primary/index.html"),
+			$event => primaryAppWindow = closeWindow(primaryAppWindow, $event),
+			() => primaryAppWindow = undefined,
+			() => sendMessage(primaryAppWindow, "dom-ready", environment, onNext)
+		);
+	}
+	else {
+		showWindow(primaryAppWindow, onNext);
+	}
+}
+
+function createSecondaryAppWindow(onNext) {
+	if (secondaryAppWindow === undefined) {
+		secondaryAppWindow = createWindow(
+			{
+				width: 480,
+				height: 768,
+				minWidth: 320,
+				minHeight: 480,
+				icon: environment.icon
+			},
+			path.join("file://", __dirname, "src/app-secondary/index.html"),
+			$event => secondaryAppWindow = closeWindow(secondaryAppWindow, $event),
+			() => secondaryAppWindow = undefined,
+			() => sendMessage(secondaryAppWindow, "dom-ready", environment, onNext)
+		);
+	}
+	else {
+		showWindow(secondaryAppWindow, onNext);
+	}
+}
+
+function createAboutWindow(onNext) {
+	if (aboutWindow === undefined) {
+		aboutWindow = createWindow(
+			{
+				width: 550,
+				height: 260,
+				frame: false
+			},
+			path.join("file://", __dirname, "src/about/index.html"),
+			$event => aboutWindow = closeWindow(aboutWindow, $event),
+			() => aboutWindow = undefined,
+			() => sendMessage(aboutWindow, "dom-ready", environment, onNext)
+		);
+	}
+	else {
+		showWindow(aboutWindow, onNext);
+	}
+}
+
+function createUpdateWindow(onNext) {
+	if (updateWindow === undefined) {
+		updateWindow = createWindow(
+			{
+				width: 550,
+				height: 260
+			},
+			path.join("file://", __dirname, "src/update/index.html"),
+			$event => updateWindow = closeWindow(updateWindow, $event),
+			() => updateWindow = undefined,
+			() => sendMessage(updateWindow, "dom-ready", environment, onNext)
+		);
+	}
+	else {
+		showWindow(updateWindow, onNext);
 	}
 }
 
 // -----------------------------------------------------
 
-// main menu
-function createMainMenu(name) {
+function createMenu(authenticatedInfo) {
 	const template = [
+		{
+			label: electron.app.getName(),
+			submenu: [
+				{
+					label: "About " + electron.app.getName(),
+					click: () => createAboutWindow()
+				},
+				{ type: "separator" },
+				{
+					label: "Check for updates...",
+					click: () => createUpdateWindow(() => sendMessage(updateWindow, "clear-messages", undefined, () => checkForUpdates()))
+				},
+				{
+					type: "separator"
+				},
+				{
+					label: authenticatedInfo ? "Profile" + (typeof authenticatedInfo === "string" ? " (" + authenticatedInfo + ")" : "") : "Log In",
+					click: () => sendMessageToPrimaryApp("Navigate", { Type: authenticatedInfo ? "Profile" : "LogIn" })
+				}
+			]
+		},
 		{
 			label: "Edit",
 			submenu: [
@@ -120,48 +221,8 @@ function createMainMenu(name) {
 		}
 	];
 
-	if (environment.isDevelopment) {
-		template[1].submenu.push({ type: "separator" });
-		template[1].submenu.push({ role: "toggledevtools" });
-	}
-
-	const first = {
-		label: electron.app.getName(),
-		submenu: [
-			{
-				label: "About " + electron.app.getName(),
-				click: () => showAboutWindow()
-			},
-			{ type: "separator" },
-			{
-				label: "Check for updates...",
-				click: () => createUpdateWindow(() => {
-					updateWindow.webContents.send("window.update", { type: "clear" });
-					sendUpdateMessage("Checking for updates...");
-					if (!environment.checkingForUpdates) {
-						environment.checkingForUpdates = true;
-						autoUpdater.checkForUpdates();
-					}
-				})
-			},
-			{
-				type: "separator"
-			},
-			{
-				label: name ? "Profile" + (typeof name === "string" ? " (" + name + ")" : "...") : "Log In",
-				click: () => {
-					if (name) {
-						mainWindow.webContents.send("window.main", { event: "Navigate", args: { Type: "Profile" } });
-					}
-					else {
-						mainWindow.webContents.send("window.main", { event: "Navigate", args: { Type: "LogIn" } });
-					}
-				}
-			}
-		]
-	};
 	if (process.platform === "darwin") {
-		first.submenu = first.submenu.concat([
+		template[0].submenu = template[0].submenu.concat([
 			{
 				type: "separator"
 			},
@@ -176,7 +237,8 @@ function createMainMenu(name) {
 			}
 		]);
 	}
-	first.submenu = first.submenu.concat([
+
+	template[0].submenu = template[0].submenu.concat([
 		{
 			type: "separator"
 		},
@@ -184,137 +246,88 @@ function createMainMenu(name) {
 			role: "quit"
 		}
 	]);
-	template.unshift(first);
+
+	if (environment.isDebug || environment.openDevTools) {
+		template[2].submenu = template[2].submenu.concat([
+			{ type: "separator" },
+			{ role: "toggledevtools" }
+		]);
+	}
 
 	electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(template));
 }
 
 // -----------------------------------------------------
 
-function createUpdateWindow(next) {
-	if (updateWindow === undefined) {
-		updateWindow = new electron.BrowserWindow({ parent: mainWindow });
-		updateWindow.loadURL(path.join("file://", __dirname, "src/update/index.html"));
-		updateWindow.on("close", $event => {
-			if (electron.app.willQuit) {
-				updateWindow = undefined;
-			}
-			else {
-				$event.preventDefault()
-				updateWindow.hide();
-			}
-		});
-		updateWindow.on("closed", () => updateWindow = undefined);
-		updateWindow.webContents.once("dom-ready", () => {
-			updateWindow.webContents.send("window.update", {
-				type: "dom-ready",
-				environment: environment
-			});
-			if (next !== undefined) {
-				next();
-			}
-		});
-		if (environment.openDevTools) {
-			updateWindow.webContents.openDevTools({ mode: "detach" });
-		}
-	}
-	else {
-		updateWindow.show();
-		if (next !== undefined) {
-			next();
-		}
+function checkForUpdates() {
+	if (!environment.checkingForUpdates) {
+		sendMessage(updateWindow, "add-message", "Checking for updates...");
+		environment.checkingForUpdates = true;
+		autoUpdater.autoInstallOnAppQuit = true;
+		autoUpdater.checkForUpdates();
 	}
 }
 
-function sendUpdateMessage(message) {
-	if (updateWindow !== undefined) {
-		updateWindow.webContents.send("window.update", {
-			type: "message",
-			message: message
-		});
-	}
-}
-
-autoUpdater.on("error", ($event, $error) => {
-	sendUpdateMessage("Error occurred while checking for updates... Please try again later!");
+autoUpdater.on("error", (_, $error) => {
+	sendMessage(updateWindow, "add-message", "Error occurred while checking for updates... Please try again later!");
 	environment.checkingForUpdates = false;
 	log.error($error);
 });
 
-autoUpdater.on("update-available", ($event, $info) => {
+autoUpdater.on("update-available", (_, $info) => {
+	createUpdateWindow(() => sendMessage(updateWindow, "add-message", "Updates are available."));
 	log.info($info);
-	if (updateWindow === undefined) {
-		createUpdateWindow(() => {
-			sendUpdateMessage("Checking for updates...");
-			sendUpdateMessage("Updates are available.");
-		});
-	}
-	else {
-		sendUpdateMessage("Updates are available.");
-	}
 });
 
-autoUpdater.on("update-not-available", ($event, $info) => {
+autoUpdater.on("update-not-available", (_, $info) => {
+	sendMessage(updateWindow, "add-message", "No update is available.");
 	log.info($info);
 	environment.checkingForUpdates = false;
-	sendUpdateMessage("No update is available.");
 });
 
-autoUpdater.on("download-progress", ($event, $progress) => {
+autoUpdater.on("download-progress", (_, $progress) => {
+	sendMessage(updateWindow, "add-message", "Downloading...");
 	log.info($progress);
-	if (updateWindow === undefined) {
-		createUpdateWindow(() => {
-			sendUpdateMessage("Checking for updates...");
-			sendUpdateMessage("Updates are available.");
-			sendUpdateMessage("Downloading...");
-		});
-	}
-	else {
-		sendUpdateMessage("Downloading...");
-	}
 });
 
-autoUpdater.on("update-downloaded", ($event, $info) => {
+autoUpdater.on("update-downloaded", (_, $info) => {
+	createUpdateWindow(() => {
+		sendMessage(updateWindow, "add-message", "Updates downloaded...");
+		sendMessage(updateWindow, "update-state", true);
+	});
 	log.info($info);
-	if (updateWindow === undefined) {
-		createUpdateWindow(() => {
-			sendUpdateMessage("Checking for updates...");
-			sendUpdateMessage("Updates are available.");
-			sendUpdateMessage("Updates downloaded...");
-		});
+});
+
+electron.ipcMain.on("autoUpdater", (_, $request) => {
+	if ("QuitAndInstall" === $request) {
+		electron.app.willQuit = true;
+		environment.checkingForUpdates = false;
+		if (aboutWindow !== undefined) {
+			aboutWindow.close();
+		}
+		if (updateWindow !== undefined) {
+			updateWindow.close();
+		}
+		if (secondaryAppWindow !== undefined) {
+			secondaryAppWindow.close();
+		}
+		if (process.platform === "darwin" && primaryAppWindow !== undefined) {
+			primaryAppWindow.close();
+		}
+		autoUpdater.quitAndInstall();
 	}
-	else {
-		sendUpdateMessage("Updates downloaded...");
-	}
-	setTimeout(() => updateWindow.webContents.send("window.update", { type: "ready"	}), 1500);
 });
 
 // ----------------------------------------------------------------------
 
 electron.app.on("ready", () => {
-	createMainMenu();
-	createMainWindow();
-	autoUpdater.autoInstallOnAppQuit = true;
-	setTimeout(() => {
-		if (!environment.checkingForUpdates) {
-			environment.checkingForUpdates = true;
-			autoUpdater.checkForUpdates();
-		}
-	}, 13000);
+	createPrimaryAppWindow();
+	createMenu();
+	setTimeout(() => checkForUpdates(), 13000);
 });
 
-electron.app.on("activate", () => {
-	// on macOS it"s common to re-create a window in the app when the dock icon is clicked and there are no other windows open
-	if (mainWindow === undefined) {
-		createMainWindow();
-	}
-	else {
-		mainWindow.show();
-	}
-});
+electron.app.on("activate", () => createPrimaryAppWindow());
 
-// quit when all windows are closed
-// on macOS it"s common for applications and their menu bar to stay active until the user quits explicitly with Cmd + Q
 electron.app.on("before-quit", () => electron.app.willQuit = true);
 
 electron.app.on("window-all-closed", () => {
@@ -325,46 +338,42 @@ electron.app.on("window-all-closed", () => {
 
 // ----------------------------------------------------------------------
 
-electron.ipcMain.on("autoUpdater", ($event, $info) => {
-	if ("QuitAndInstall" === $info.request) {
-		environment.checkingForUpdates = false;
-		electron.app.willQuit = true;
-		autoUpdater.quitAndInstall();
-	}
-});
-
-electron.ipcMain.on("App", ($event, $info) => {
+electron.ipcMain.on("App", (_, $info) => {
 	if ("Initialized" == $info.Type) {
+		const compareVersions = require("compare-versions");
 		environment.app = $info.Data.app;
 		environment.app.homepageURI = $info.Data.URIs.activations;
+		environment.app.version = compareVersions(electron.app.getVersion(), environment.app.version) > 0
+			? electron.app.getVersion()
+			: environment.app.version;
 		environment.session = $info.Data.session;
 		environment.URIs = $info.Data.URIs;
 		environment.options = $info.Data.options;
 		environment.organizations = $info.Data.organizations;
 		environment.services = $info.Data.services;
-		const compareVersions = require("compare-versions");
-		if (compareVersions(electron.app.getVersion(), environment.app.version) > 0) {
-			environment.app.version = electron.app.getVersion();
+		if (!environment.isDebug && environment.app.debug) {
+			environment.isDebug = true;
+			createMenu(environment.session.token && environment.session.token.uid && environment.session.token.uid !== "");
 		}
-		if (environment.isDevelopment) {
-			console.log("App Initialized => ", environment);
-		}
+	}
+	if (environment.isDebug) {
+		console.log("[App]", $info);
 	}
 });
 
-electron.ipcMain.on("Users", ($event, $info) => {
-	if (environment.isDevelopment) {
-		console.log("Users updated => ", $info);
-	}
+electron.ipcMain.on("Users", (_, $info) => {
 	if ("LogOut" == $info.Type) {
 		environment.session = $info.Data;
-		createMainMenu("LogIn" == $info.Type);
+		createMenu("LogIn" == $info.Type);
 	}
 	else if ("LogIn" == $info.Type) {
 		environment.session = $info.Data;
-		createMainMenu(true);
+		createMenu(true);
 	}
 	else if ("ProfileUpdated" == $info.Type) {
-		createMainMenu($info.Data.Name);
+		createMenu($info.Data.Name);
+	}
+	if (environment.isDebug) {
+		console.log("[Users]", $info);
 	}
 });
