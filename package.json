@@ -1,27 +1,42 @@
 {
   "main": "electron.js",
-  "name": "vieapps-ngx-books",
-  "version": "1.0.0-beta.4",
+  "name": "ngx-apps",
+  "version": "1.0.0",
   "author": {
     "name": "VIEApps.net",
     "email": "vieapps.net@gmail.com"
   },
-  "productName": "VIEApps NGX Books",
-  "description": "Online Books from VIEApps.net",
-  "homepage": "https://viebooks.net",
+  "productName": "VIEApps",
+  "description": "Wonderful apps from VIEApps.net",
+  "homepage": "https://vieapps.net",
   "license": "Apache 2.0",
-  "appFrameworks": ".net core 2.1 - ionic 4.0-beta.12 - angular 6.1.9 - cordova 8.0.0",
   "build": {
-    "appId": "net.vieapps.books",
-    "copyright": "© 2016 - 2018 VIEApps.net",
+    "appId": "net.vieapps.apps",
+    "copyright": "© 2018 VIEApps.net",
     "electronVersion": "3.0.2",
-    "asar": false,
+    "asar": true,
     "files": [
       "src/**/*",
       "electron.js"
     ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://fs.vieapps.net/app-releases"
+      }
+    ],
     "mac": {
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "target": [
+        "zip",
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "zip",
+        "nsis"
+      ]
     },
     "dmg": {
       "title": "${productName} ${version}",
@@ -42,24 +57,24 @@
         "height": 380
       }
     },
-    "win": {
-      "target": "portable"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "Utility"
+    "nsis": {
+      "perMachine": true
     }
   },
   "scripts": {
     "electron": "electron .",
     "electron dist": "electron .",
-    "ebuild": "node_modules/.bin/build"
+    "electron-build": "node_modules/.bin/build --win --mac --x64",
+    "electron-build-win": "node_modules/.bin/build --win --x64",
+    "electron-build-mac": "node_modules/.bin/build --mac --x64"
   },
   "devDependencies": {
     "electron": "^3.0.2",
     "electron-builder": "^20.28.4"
+  },
+  "dependencies": {
+    "compare-versions": "^3.4.0",
+    "electron-log": "^2.2.17",
+    "electron-updater": "^3.1.2"
   }
 }
