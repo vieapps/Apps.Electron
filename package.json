@@ -1,17 +1,17 @@
 {
   "main": "electron.js",
-  "name": "ngx-books",
-  "version": "1.0.0-beta.4",
+  "name": "vieapps-ngx",
+  "version": "1.0.0",
   "author": {
     "name": "VIEApps.net",
     "email": "vieapps.net@gmail.com"
   },
-  "productName": "VIEApps NGX Books",
-  "description": "Online Books from VIEApps.net",
-  "homepage": "https://viebooks.net",
+  "productName": "VIEApps NGX",
+  "description": "Wonderful apps from VIEApps.net",
+  "homepage": "https://vieapps.net",
   "license": "Apache 2.0",
   "build": {
-    "appId": "net.vieapps.books",
+    "appId": "net.vieapps.apps",
     "copyright": "© 2016 - 2018 VIEApps.net",
     "electronVersion": "3.0.2",
     "asar": true,
