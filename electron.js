@@ -1,7 +1,6 @@
 const path = require("path");
 const console = require("console");
 const electron = require("electron");
-const log = require("electron-log");
 const { autoUpdater } = require("electron-updater");
 
 const environment = {
@@ -259,43 +258,42 @@ function createMenu(authenticatedInfo) {
 
 // -----------------------------------------------------
 
+autoUpdater.logger = require("electron-log");
+autoUpdater.logger.transports.file.level = "info";
+autoUpdater.checkingForUpdates = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
 function checkForUpdates() {
 	if (!autoUpdater.checkingForUpdates) {
 		sendMessage(updateWindow, "add-message", "Checking for updates...");
 		autoUpdater.checkingForUpdates = true;
-		autoUpdater.autoInstallOnAppQuit = true;
 		autoUpdater.checkForUpdates();
 	}
 }
 
-autoUpdater.on("error", (_, $error) => {
+autoUpdater.on("error", () => {
 	sendMessage(updateWindow, "add-message", "Error occurred while checking for updates... Please try again later!");
 	autoUpdater.checkingForUpdates = false;
-	log.error($error);
 });
 
-autoUpdater.on("update-available", (_, $info) => {
+autoUpdater.on("update-available", () => {
 	createUpdateWindow(() => sendMessage(updateWindow, "add-message", "Updates are available"));
-	log.info($info);
 });
 
-autoUpdater.on("update-not-available", (_, $info) => {
+autoUpdater.on("update-not-available", () => {
 	sendMessage(updateWindow, "add-message", "No update is available");
 	autoUpdater.checkingForUpdates = false;
-	log.info($info);
 });
 
 autoUpdater.on("download-progress", (_, $progress) => {
 	sendMessage(updateWindow, "add-message", "Downloading...");
-	log.info($progress);
 });
 
-autoUpdater.on("update-downloaded", (_, $info) => {
+autoUpdater.on("update-downloaded", () => {
 	createUpdateWindow(() => {
 		sendMessage(updateWindow, "add-message", "Updates downloaded...");
 		sendMessage(updateWindow, "update-state", true);
 	});
-	log.info($info);
 });
 
 electron.ipcMain.on("app.updater", (_, $request) => {
