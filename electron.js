@@ -6,18 +6,20 @@ const { autoUpdater } = require("electron-updater");
 
 const environment = {
 	icon: path.join(__dirname, "src/app-primary/assets/images/icon.png"),
-	isDebug: process.argv.slice(2).find(arg => arg === "/dev" || arg === "/debug") !== undefined,
-	openDevTools: process.argv.slice(2).find(arg => arg === "/dev" || arg === "/devtools") !== undefined,
-	checkingForUpdates: false,
+	isDebug: process.argv.slice(2).findIndex(arg => arg === "/dev" || arg === "/debug") > -1,
+	openDevTools: process.argv.slice(2).findIndex(arg => arg === "/dev" || arg === "/devtools") > -1,
 	app: {
 		id: "vieapps-ngx",
-		name: "VIEApps",
+		name: "VIEApps NGX",
 		description: "Wonderful apps from VIEApps.net",
 		version: "1.0.0",
 		copyright: "© 2018 VIEApps.net",
 		license: "Apache-2.0",
-		frameworks: ".net core 2.1 - ionic 4.0-beta.12 - angular 6.1.9 - cordova 8.0.0",
+		frameworks: ".net core 2.1 - ionic 4.0 - angular 6.1.9 - cordova 8.0.0",
 		homepageURI: "https://vieapps.net/"
+	},
+	session: {
+		token: {}
 	}
 };
 
@@ -131,7 +133,7 @@ function createAboutWindow(onNext) {
 		aboutWindow = createWindow(
 			{
 				width: 550,
-				height: 260,
+				height: 250,
 				frame: false
 			},
 			path.join("file://", __dirname, "src/about/index.html"),
@@ -150,7 +152,7 @@ function createUpdateWindow(onNext) {
 		updateWindow = createWindow(
 			{
 				width: 550,
-				height: 260
+				height: 250
 			},
 			path.join("file://", __dirname, "src/update/index.html"),
 			$event => updateWindow = closeWindow(updateWindow, $event),
@@ -162,8 +164,6 @@ function createUpdateWindow(onNext) {
 		showWindow(updateWindow, onNext);
 	}
 }
-
-// -----------------------------------------------------
 
 function createMenu(authenticatedInfo) {
 	const template = [
@@ -260,9 +260,9 @@ function createMenu(authenticatedInfo) {
 // -----------------------------------------------------
 
 function checkForUpdates() {
-	if (!environment.checkingForUpdates) {
+	if (!autoUpdater.checkingForUpdates) {
 		sendMessage(updateWindow, "add-message", "Checking for updates...");
-		environment.checkingForUpdates = true;
+		autoUpdater.checkingForUpdates = true;
 		autoUpdater.autoInstallOnAppQuit = true;
 		autoUpdater.checkForUpdates();
 	}
@@ -270,19 +270,19 @@ function checkForUpdates() {
 
 autoUpdater.on("error", (_, $error) => {
 	sendMessage(updateWindow, "add-message", "Error occurred while checking for updates... Please try again later!");
-	environment.checkingForUpdates = false;
+	autoUpdater.checkingForUpdates = false;
 	log.error($error);
 });
 
 autoUpdater.on("update-available", (_, $info) => {
-	createUpdateWindow(() => sendMessage(updateWindow, "add-message", "Updates are available."));
+	createUpdateWindow(() => sendMessage(updateWindow, "add-message", "Updates are available"));
 	log.info($info);
 });
 
 autoUpdater.on("update-not-available", (_, $info) => {
-	sendMessage(updateWindow, "add-message", "No update is available.");
+	sendMessage(updateWindow, "add-message", "No update is available");
+	autoUpdater.checkingForUpdates = false;
 	log.info($info);
-	environment.checkingForUpdates = false;
 });
 
 autoUpdater.on("download-progress", (_, $progress) => {
@@ -298,10 +298,9 @@ autoUpdater.on("update-downloaded", (_, $info) => {
 	log.info($info);
 });
 
-electron.ipcMain.on("autoUpdater", (_, $request) => {
+electron.ipcMain.on("app.updater", (_, $request) => {
 	if ("QuitAndInstall" === $request) {
 		electron.app.willQuit = true;
-		environment.checkingForUpdates = false;
 		if (aboutWindow !== undefined) {
 			aboutWindow.close();
 		}
@@ -321,9 +320,14 @@ electron.ipcMain.on("autoUpdater", (_, $request) => {
 // ----------------------------------------------------------------------
 
 electron.app.on("ready", () => {
-	createPrimaryAppWindow();
 	createMenu();
-	setTimeout(() => checkForUpdates(), 13000);
+	createPrimaryAppWindow();
+	setTimeout(() => {
+		checkForUpdates();
+		if (environment.isDebug) {
+			setTimeout(() => console.log("<<Environment>>", environment), 5000);
+		}
+	}, 13000);
 });
 
 electron.app.on("activate", () => createPrimaryAppWindow());
@@ -342,7 +346,7 @@ electron.ipcMain.on("App", (_, $info) => {
 	if ("Initialized" == $info.Type) {
 		const compareVersions = require("compare-versions");
 		environment.app = $info.Data.app;
-		environment.app.homepageURI = $info.Data.URIs.activations;
+		environment.app.homepageURI = $info.Data.app.homepageURI || $info.Data.URIs.activations;
 		environment.app.version = compareVersions(electron.app.getVersion(), environment.app.version) > 0
 			? electron.app.getVersion()
 			: environment.app.version;
@@ -351,6 +355,7 @@ electron.ipcMain.on("App", (_, $info) => {
 		environment.options = $info.Data.options;
 		environment.organizations = $info.Data.organizations;
 		environment.services = $info.Data.services;
+		environment.languages = $info.Data.languages;
 		if (!environment.isDebug && environment.app.debug) {
 			environment.isDebug = true;
 			createMenu(environment.session.token && environment.session.token.uid && environment.session.token.uid !== "");
@@ -362,16 +367,19 @@ electron.ipcMain.on("App", (_, $info) => {
 });
 
 electron.ipcMain.on("Users", (_, $info) => {
-	if ("LogOut" == $info.Type) {
+	if ("LogOut" == $info.Type || "LogIn" == $info.Type) {
 		environment.session = $info.Data;
+		if ("LogOut" == $info.Type) {
+			environment.session.account = {};
+			environment.profile = {};
+		}
 		createMenu("LogIn" == $info.Type);
 	}
-	else if ("LogIn" == $info.Type) {
-		environment.session = $info.Data;
-		createMenu(true);
-	}
-	else if ("ProfileUpdated" == $info.Type) {
-		createMenu($info.Data.Name);
+	else if ($info.Type !== undefined && $info.Type.Service !== "") {
+		if ("Profile" == $info.Type.Object && $info.Data.ID == environment.session.token.uid) {
+			environment.profile = $info.Data;
+			createMenu($info.Data.Name);
+		}
 	}
 	if (environment.isDebug) {
 		console.log("[Users]", $info);

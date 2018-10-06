@@ -1,36 +1,34 @@
 body,
 html {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-app-region: drag;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-app-region: drag;
 }
 body {
-  margin: 0;
-  font-size: 12px;
-  font-family: 'Helvetica', 'Arial', 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, 'ＭＳ Ｐゴシック', 'MS PGothic', sans-serif;
+	margin: 0;
+	font-size: 12px;
+	font-family: 'Helvetica', 'Arial', 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, 'ＭＳ Ｐゴシック', 'MS PGothic', sans-serif;
 }
 body > div {
-  padding: 16px;
-  margin-bottom: 64px;
+	padding: 16px;
+	margin-bottom: 64px;
 }
-
 body > section {
-  position: absolute;
-  bottom: 0;
-  padding: 16px;
-  text-align: right;
+	position: fixed;
+	bottom: 0;
+	width: 100%;
+	height: 64px;
+	text-align: right;
 }
-
 body > section > button {
-  height: 32px;
-  line-height: 32px;
-  border-radius: 5px;
+	padding: 10px;
+	margin: 16px;
+	border-radius: 5px;
 }
-
 body > section > button.true {
-  color: #000;
+	color: #000;
+	font-weight: bold;
 }
-
 body > section > button.false {
-  color: #999;
+	color: #999;
 }
