@@ -7,7 +7,7 @@ Steps:
 - Replace the icons (in the "build" folder) by your app icon - use this convert tool (https://iconverticons.com/online/) if you need to create icon files from your PNG image
 - Type "npm install" to install all dependencies (in terminal/command prompt at the project folder, of course)
 - Type "npm run electron" to test your "desktop" app that packed with Electron
-- Type "npm run electron-build" to build the distributions of your app (x64 on macOS and Windows)
+- Type "npm run electron-build" to build the distributions of your app (macOS, Windows & Linux)
 - Open the folder named "dist" to see the distributions of your "desktop" app.
 
 More information:

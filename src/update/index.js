@@ -2,9 +2,13 @@ const electron = require("electron");
 
 electron.ipcRenderer.on("dom-ready", (_, $environment) => {
 	document.getElementById("version").innerText = "Current version: v" + $environment.app.version;
-	document.getElementById("action").addEventListener("click", () => {
-		if (document.getElementById("action").classList.contains("true")) {
-			electron.ipcRenderer.send("app.updater", "QuitAndInstall");
+	const action = document.getElementById("action");
+	action.classList.add(process.platform);
+	action.parentElement.classList.add(process.platform);
+	action.addEventListener("click", () => {
+		const state = document.getElementById("action").classList;
+		if (state.contains("ready")) {
+			electron.ipcRenderer.send("app.updater", state.contains("can") ? "QuitAndInstall" : "Quit");
 		}
 		electron.remote.getCurrentWindow().close();
 	});
@@ -20,14 +24,23 @@ electron.ipcRenderer.on("add-message", (_, $message) => {
 	document.getElementById("messages").appendChild(message);
 });
 
+electron.ipcRenderer.on("update-info", (_, $environment) => {
+	document.getElementById("version").innerText = "Current version: v" + $environment.app.version;
+});
+
 electron.ipcRenderer.on("update-state", (_, $state) => {
-	const isReadyToInstall = $state !== undefined ? $state : false;
+	const isReadyToInstall = $state !== undefined ? $state.ready : false;
+	const canInstall = $state !== undefined ? $state.canInstall : false;
 	const action = document.getElementById("action");
-	action.innerText = isReadyToInstall ? "Install updates" : "Close";
-	action.classList.remove(isReadyToInstall ? "false" : "true");
-	action.classList.add(isReadyToInstall ? "true" : "false");
-	const announcement = document.getElementById("announcement");
-	announcement.innerText = isReadyToInstall ? "Updates will be installed when reload the app" : "";
-	announcement.classList.remove(isReadyToInstall ? "false" : "true");
-	announcement.classList.add(isReadyToInstall ? "true" : "false");
+	action.innerText = isReadyToInstall
+		? canInstall
+			? "Install updates"
+			: "Quit"
+		: "Close";
+	if (isReadyToInstall) {
+		action.classList.add("ready");
+		if (canInstall) {
+			action.classList.add("can");
+		}
+	}
 });

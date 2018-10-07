@@ -7,6 +7,7 @@ const environment = {
 	icon: path.join(__dirname, "src/app-primary/assets/images/icon.png"),
 	isDebug: process.argv.slice(2).findIndex(arg => arg === "/dev" || arg === "/debug") > -1,
 	openDevTools: process.argv.slice(2).findIndex(arg => arg === "/dev" || arg === "/devtools") > -1,
+	canInstallUpdates: false,
 	app: {
 		id: "vieapps-ngx",
 		name: "VIEApps NGX",
@@ -26,7 +27,7 @@ const environment = {
 
 let primaryAppWindow, secondaryAppWindow, aboutWindow, updateWindow;
 
-function createWindow(options, url, onClose, onClosed, onDomReady) {
+function createWindow(options, url, onClose, onClosed, onDomReady, dontHideMenu) {
 	const window = new electron.BrowserWindow(options);
 	window.loadURL(url);
 	if (onClose !== undefined) {
@@ -37,6 +38,9 @@ function createWindow(options, url, onClose, onClosed, onDomReady) {
 	}
 	if (onDomReady !== undefined) {
 		window.webContents.once("dom-ready", $event => onDomReady($event));
+	}
+	if (!dontHideMenu && process.platform !== "darwin") {
+		window.setMenuBarVisibility(false);
 	}
 	if (environment.openDevTools) {
 		window.webContents.openDevTools({ mode: "detach" });
@@ -96,9 +100,21 @@ function createPrimaryAppWindow(onNext) {
 				icon: environment.icon
 			},
 			path.join("file://", __dirname, "src/app-primary/index.html"),
-			$event => primaryAppWindow = closeWindow(primaryAppWindow, $event),
-			() => primaryAppWindow = undefined,
-			() => sendMessage(primaryAppWindow, "dom-ready", environment, onNext)
+			$event => {
+				if (process.platform === "darwin") {
+					primaryAppWindow = closeWindow(primaryAppWindow, $event);
+				}
+			},
+			() => {
+				if (process.platform === "darwin") {
+					primaryAppWindow = undefined;
+				}
+				else {
+					electron.app.quit();
+				}
+			},
+			() => sendMessage(primaryAppWindow, "dom-ready", environment, onNext),
+			process.platform !== "darwin"
 		);
 	}
 	else {
@@ -132,8 +148,8 @@ function createAboutWindow(onNext) {
 		aboutWindow = createWindow(
 			{
 				width: 550,
-				height: 250,
-				frame: false
+				height: process.platform !== "darwin" ? 305 : 280,
+				icon: environment.icon
 			},
 			path.join("file://", __dirname, "src/about/index.html"),
 			$event => aboutWindow = closeWindow(aboutWindow, $event),
@@ -151,7 +167,8 @@ function createUpdateWindow(onNext) {
 		updateWindow = createWindow(
 			{
 				width: 550,
-				height: 250
+				height: process.platform !== "darwin" ? 305 : 280,
+				icon: environment.icon
 			},
 			path.join("file://", __dirname, "src/update/index.html"),
 			$event => updateWindow = closeWindow(updateWindow, $event),
@@ -261,7 +278,7 @@ function createMenu(authenticatedInfo) {
 autoUpdater.logger = require("electron-log");
 autoUpdater.logger.transports.file.level = "info";
 autoUpdater.checkingForUpdates = false;
-autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoInstallOnAppQuit = false;
 
 function checkForUpdates() {
 	if (!autoUpdater.checkingForUpdates) {
@@ -277,7 +294,8 @@ autoUpdater.on("error", () => {
 });
 
 autoUpdater.on("update-available", () => {
-	sendMessage(updateWindow, "add-message", "Updates are available");
+	sendMessage(updateWindow, "add-message", "New updates are available");
+	sendMessage(updateWindow, "add-message", "Start to download the updates");
 });
 
 autoUpdater.on("update-not-available", () => {
@@ -315,27 +333,27 @@ autoUpdater.on("download-progress", $progress => {
 autoUpdater.on("update-downloaded", () => {
 	autoUpdater.checkingForUpdates = false;
 	createUpdateWindow(() => {
-		sendMessage(updateWindow, "update-state", true);
-		sendMessage(updateWindow, "add-message", "Click the button 'Install updates' to apply");
+		sendMessage(updateWindow, "update-state", { ready: true, canInstall: environment.canInstallUpdates });
+		sendMessage(updateWindow, "add-message", "Updates are downloaded");
+		if (environment.canInstallUpdates) {
+			sendMessage(updateWindow, "add-message", "Click the 'Install updates' button to install and relaunch");
+		}
+		else {
+			sendMessage(updateWindow, "add-message", "Click the 'Quit' button to terminate the app, and relaunch with administrator privileges (right-click on app shortcut/file and select 'Run as administrator') to apply new updates");
+		}
 	});
+});
+
+autoUpdater.on("before-quit-for-update", () => {
+	electron.app.willQuit = true;
 });
 
 electron.ipcMain.on("app.updater", (_, $request) => {
 	if ("QuitAndInstall" === $request) {
-		electron.app.willQuit = true;
-		if (aboutWindow !== undefined) {
-			aboutWindow.close();
-		}
-		if (updateWindow !== undefined) {
-			updateWindow.close();
-		}
-		if (secondaryAppWindow !== undefined) {
-			secondaryAppWindow.close();
-		}
-		if (process.platform === "darwin" && primaryAppWindow !== undefined) {
-			primaryAppWindow.close();
-		}
 		autoUpdater.quitAndInstall();
+	}
+	else if ("Quit" === $request) {
+		electron.app.quit();
 	}
 });
 
@@ -344,12 +362,23 @@ electron.ipcMain.on("app.updater", (_, $request) => {
 electron.app.on("ready", () => {
 	createMenu();
 	createPrimaryAppWindow();
+
+	if (process.platform === "win32") {
+		const childProcess = require("child_process");
+		childProcess.exec("NET SESSION", function(err, so, se) {
+			environment.canInstallUpdates = se.length === 0;
+    });
+	}
+	else {
+		environment.canInstallUpdates = true;
+	}
+
 	setTimeout(() => {
 		checkForUpdates();
 		if (environment.isDebug) {
 			setTimeout(() => console.log("<<Environment>>", environment), 3000);
 		}
-	}, 13000);
+	}, process.platform === "win32" ? 3000 : 13000);
 });
 
 electron.app.on("activate", () => createPrimaryAppWindow());
@@ -368,7 +397,7 @@ electron.ipcMain.on("App", (_, $info) => {
 	if ("Initialized" == $info.Type) {
 		const compareVersions = require("compare-versions");
 		environment.app = $info.Data.app;
-		environment.app.homepageURI = $info.Data.app.homepageURI || $info.Data.URIs.activations;
+		environment.app.homepage = $info.Data.app.homepage || $info.Data.URIs.activations;
 		environment.app.version = compareVersions(electron.app.getVersion(), environment.app.version) > 0
 			? electron.app.getVersion()
 			: environment.app.version;
@@ -382,6 +411,8 @@ electron.ipcMain.on("App", (_, $info) => {
 			environment.isDebug = true;
 			createMenu(environment.session.token && environment.session.token.uid && environment.session.token.uid !== "");
 		}
+		sendMessage(aboutWindow, "update-info", environment);
+		sendMessage(updateWindow, "update-info", environment);
 	}
 	if (environment.isDebug) {
 		console.log("[App]", $info);

@@ -1,80 +1,87 @@
 {
-  "main": "electron.js",
-  "name": "vieapps-ngx",
-  "version": "1.0.0",
-  "author": {
-    "name": "VIEApps.net",
-    "email": "vieapps.net@gmail.com"
-  },
-  "productName": "VIEApps NGX",
-  "description": "Wonderful apps from VIEApps.net",
-  "homepage": "https://vieapps.net",
-  "license": "Apache 2.0",
-  "build": {
-    "appId": "net.vieapps.apps",
-    "copyright": "© 2016 - 2018 VIEApps.net",
-    "electronVersion": "3.0.2",
-    "asar": true,
-    "files": [
-      "src/**/*",
-      "electron.js"
-    ],
-    "publish": [
-      {
-        "provider": "generic",
-        "url": "http://127.0.0.1:8080/"
-      }
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        "zip",
-        "dmg"
-      ]
-    },
-    "win": {
-      "target": [
-        "zip",
-        "nsis"
-      ]
-    },
-    "dmg": {
-      "title": "${productName} ${version}",
-      "contents": [
-        {
-          "x": 400,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        },
-        {
-          "x": 150,
-          "y": 220
-        }
-      ],
-      "window": {
-        "width": 510,
-        "height": 380
-      }
-    },
-    "nsis": {
-      "perMachine": true
-    }
-  },
-  "scripts": {
-    "electron": "electron .",
-    "electron dist": "electron .",
-    "electron-build": "node_modules/.bin/build --win --mac --x64",
-    "electron-build-win": "node_modules/.bin/build --win --x64",
-    "electron-build-mac": "node_modules/.bin/build --mac --x64"
-  },
-  "devDependencies": {
-    "electron": "^3.0.3",
-    "electron-builder": "^20.28.4"
-  },
-  "dependencies": {
-    "compare-versions": "^3.4.0",
-    "electron-log": "^2.2.17",
-    "electron-updater": "^3.1.2"
-  }
+	"main": "electron.js",
+	"version": "1.0.0",
+	"name": "vieapps-ngx",
+	"productName": "VIEApps NGX",
+	"description": "Wonderful apps from VIEApps.net",
+	"author": {
+		"name": "VIEApps.net",
+		"email": "vieapps.net@gmail.com"
+	},
+	"homepage": "https://vieapps.net",
+	"license": "Apache-2.0",
+	"build": {
+		"appId": "net.vieapps.apps",
+		"copyright": "© 2018 VIEApps.net",
+		"asar": true,
+		"files": [
+			"src/**/*",
+			"electron.js"
+		],
+		"publish": [
+			{
+				"provider": "generic",
+				"url": "http://localhost:8080/"
+			}
+		],
+		"mac": {
+			"category": "public.app-category.productivity",
+			"target": [
+				"zip",
+				"dmg"
+			]
+		},
+		"win": {
+			"target": [
+				"zip",
+				"nsis"
+			]
+		},
+		"linux": {
+			"category": "Office",
+			"target": [
+				"zip",
+				"AppImage"
+			]
+		},
+		"dmg": {
+			"title": "${productName} ${version}",
+			"contents": [
+				{
+					"x": 400,
+					"y": 220,
+					"type": "link",
+					"path": "/Applications"
+				},
+				{
+					"x": 150,
+					"y": 220
+				}
+			],
+			"window": {
+				"width": 510,
+				"height": 380
+			}
+		},
+		"nsis": {
+			"perMachine": true
+		}
+	},
+	"scripts": {
+		"electron": "electron .",
+		"electron dist": "electron .",
+		"electron-build": "node_modules/.bin/build --mac --win --linux --x64",
+		"electron-build-mac": "node_modules/.bin/build --mac --x64",
+		"electron-build-win": "node_modules/.bin/build --win --x64",
+		"electron-build-linux": "node_modules/.bin/build --linux --x64"
+	},
+	"devDependencies": {
+		"electron": "^3.0.3",
+		"electron-builder": "^20.28.4"
+	},
+	"dependencies": {
+		"compare-versions": "^3.4.0",
+		"electron-log": "^2.2.17",
+		"electron-updater": "^3.1.2"
+	}
 }
