@@ -440,7 +440,6 @@ electron.ipcMain.on("App", (_, $info) => {
 		environment.organizations = $info.Data.organizations;
 		environment.isDebug = !environment.isDebug ? environment.app.debug : true;
 		sendMessage(aboutWindow, "update-info", environment);
-		sendMessage(updateWindow, "update-info", environment);
 	}
 	if (environment.isDebug) {
 		console.log("[App]", $info);

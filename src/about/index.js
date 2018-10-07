@@ -1,6 +1,7 @@
 const electron = require("electron");
 
 electron.ipcRenderer.on("dom-ready", (_, $environment) => {
+	document.querySelector(".logo").src = $environment.icon;
 	updateInfo($environment);
 	const action = document.getElementById("action");
 	action.classList.add(process.platform);
@@ -8,9 +9,7 @@ electron.ipcRenderer.on("dom-ready", (_, $environment) => {
 	action.addEventListener("click", () => electron.remote.getCurrentWindow().close());
 });
 
-electron.ipcRenderer.on("update-info", (_, $environment) => {
-	updateInfo($environment);
-});
+electron.ipcRenderer.on("update-info", (_, $environment) => updateInfo($environment));
 
 function updateInfo($environment) {
 	let packageJson = undefined;
@@ -24,12 +23,12 @@ function updateInfo($environment) {
 		};
 	}
 	
-	const logo = document.querySelector(".logo");
-	logo.src = $environment.icon;
-	logo.addEventListener("click", () => electron.shell.openExternal($environment.app.homepage || packageJson.homepage));
+	const name = $environment.app.name || packageJson.productName;
+	document.title = "About " + name;
 
-	document.title = "About " + ($environment.app.name || packageJson.productName);
-	document.querySelector(".title").innerText = $environment.app.name || packageJson.productName;
+	document.querySelector(".logo").addEventListener("click", () => electron.shell.openExternal($environment.app.homepage || packageJson.homepage));
+
+	document.querySelector(".title").innerText = name;
 	document.querySelector(".description").innerText = $environment.app.description || packageJson.description;
 	document.querySelector(".version").innerText = "v" + ($environment.app.version || packageJson.version);
 	document.querySelector(".copyright").innerHTML = ($environment.app.copyright || packageJson.build.copyright) + "<br/>Distributed under " + ($environment.app.license || packageJson.license) + " license";

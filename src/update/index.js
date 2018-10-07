@@ -1,7 +1,6 @@
 const electron = require("electron");
 
 electron.ipcRenderer.on("dom-ready", (_, $environment) => {
-	document.getElementById("version").innerText = "Current version: v" + $environment.app.version;
 	const action = document.getElementById("action");
 	action.classList.add(process.platform);
 	action.parentElement.classList.add(process.platform);
@@ -14,30 +13,25 @@ electron.ipcRenderer.on("dom-ready", (_, $environment) => {
 	});
 });
 
-electron.ipcRenderer.on("clear-messages", (_, $info) => {
-	document.getElementById("messages").innerHTML = "";
-});
+electron.ipcRenderer.on("clear-messages", () => document.getElementById("messages").innerHTML = "");
 
 electron.ipcRenderer.on("add-message", (_, $message) => {
 	const message = document.createElement("div");
 	message.innerHTML = $message || ".";
-	document.getElementById("messages").appendChild(message);
-});
-
-electron.ipcRenderer.on("update-info", (_, $environment) => {
-	document.getElementById("version").innerText = "Current version: v" + $environment.app.version;
+	const container = document.getElementById("messages");
+	container.appendChild(message);
 });
 
 electron.ipcRenderer.on("update-state", (_, $state) => {
-	const isReadyToInstall = $state !== undefined ? $state.ready : false;
+	const ready = $state !== undefined ? $state.ready : false;
 	const canInstall = $state !== undefined ? $state.canInstall : false;
 	const action = document.getElementById("action");
-	action.innerText = isReadyToInstall
+	action.innerText = ready
 		? canInstall
 			? "Install updates"
 			: "Quit"
 		: "Close";
-	if (isReadyToInstall) {
+	if (ready) {
 		action.classList.add("ready");
 		if (canInstall) {
 			action.classList.add("can");
