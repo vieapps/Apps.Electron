@@ -27,23 +27,27 @@ const environment = {
 
 let primaryAppWindow, secondaryAppWindow, aboutWindow, updateWindow;
 
-function createWindow(options, url, onClose, onClosed, onDomReady, dontHideMenu) {
-	const window = new electron.BrowserWindow(options);
-	window.loadURL(url);
-	if (onClose !== undefined) {
-		window.on("close", $event => onClose($event));
+function createWindow(createOptions) {
+	createOptions = createOptions || {};
+	const window = new electron.BrowserWindow(createOptions.options || {});
+	window.loadURL(createOptions.url);
+	if (createOptions.onShow !== undefined) {
+		window.on("show", $event => createOptions.onShow($event));
 	}
-	if (onClosed !== undefined) {
-		window.on("closed", $event => onClosed($event));
+	if (createOptions.onReadyToShow !== undefined) {
+		window.on("ready-to-show", $event => createOptions.onReadyToShow($event));
 	}
-	if (onDomReady !== undefined) {
-		window.webContents.once("dom-ready", $event => onDomReady($event));
+	if (createOptions.onClose !== undefined) {
+		window.on("close", $event => createOptions.onClose($event));
 	}
-	if (!dontHideMenu && process.platform !== "darwin") {
-		window.setMenuBarVisibility(false);
+	if (createOptions.onClosed !== undefined) {
+		window.on("closed", $event => createOptions.onClosed($event));
 	}
-	if (environment.openDevTools) {
-		window.webContents.openDevTools({ mode: "detach" });
+	if (createOptions.onceShow !== undefined) {
+		window.once("show", $event => createOptions.onceShow($event));
+	}
+	if (createOptions.onceDomReady !== undefined) {
+		window.webContents.once("dom-ready", $event => createOptions.onceDomReady($event));
 	}
 	return window;
 }
@@ -68,44 +72,25 @@ function closeWindow(window, event) {
 	}
 }
 
-function sendMessage(window, event, data, onNext) {
-	if (window !== undefined) {
-		window.webContents.send(event, data);
-	}
-	if (onNext !== undefined) {
-		onNext();
-	}
-}
-
-function sendMessageToApp(appWindow, event, args, onNext) {
-	sendMessage(appWindow, "electron.ipc2app", { event: event, args: args }, onNext);
-}
-
-function sendMessageToPrimaryApp(event, args, onNext) {
-	sendMessageToApp(primaryAppWindow, event, args, onNext);
-}
-
-function sendMessageToSecondaryApp(event, args, onNext) {
-	sendMessageToApp(secondaryAppWindow, event, args, onNext);
-}
-
 function createPrimaryAppWindow(onNext) {
 	if (primaryAppWindow === undefined) {
-		primaryAppWindow = createWindow(
-			{
-				width: 1280,
-				height: 800,
+		const screen = electron.screen.getPrimaryDisplay().size;
+		primaryAppWindow = createWindow({
+			options: {
+				width: screen.width > 1280 ? 1280 : 1366,
+				height: screen.height > 800 ? 800 : 700,
 				minWidth: 320,
 				minHeight: 480,
-				icon: environment.icon
-			},
-			path.join("file://", __dirname, "src/app-primary/index.html"),
-			$event => {
+				icon: environment.icon,
+				show: false
+			}, 
+			url: path.join("file://", __dirname, "src/app-primary/index.html"),
+			onClose: $event => {
 				if (process.platform === "darwin") {
 					primaryAppWindow = closeWindow(primaryAppWindow, $event);
 				}
 			},
-			() => {
+			onClosed: () => {
 				if (process.platform === "darwin") {
 					primaryAppWindow = undefined;
 				}
@@ -113,9 +98,14 @@ function createPrimaryAppWindow(onNext) {
 					electron.app.quit();
 				}
 			},
-			() => sendMessage(primaryAppWindow, "dom-ready", environment, onNext),
-			process.platform !== "darwin"
-		);
+			onceDomReady: () => sendMessage(primaryAppWindow, "dom-ready", environment, onNext),
+			onceShow: () => {
+				if (environment.openDevTools) {
+					primaryAppWindow.webContents.openDevTools({ mode: "right" });
+				}
+			},
+			onReadyToShow: () => primaryAppWindow.show()
+		});
 	}
 	else {
 		showWindow(primaryAppWindow, onNext);
@@ -124,20 +114,25 @@ function createPrimaryAppWindow(onNext) {
 
 function createSecondaryAppWindow(onNext) {
 	if (secondaryAppWindow === undefined) {
-		secondaryAppWindow = createWindow(
-			{
+		secondaryAppWindow = createWindow({
+			options: {
 				width: 480,
 				height: 768,
 				minWidth: 320,
 				minHeight: 480,
 				icon: environment.icon,
 				show: false
-			},
-			path.join("file://", __dirname, "src/app-secondary/index.html"),
-			$event => secondaryAppWindow = closeWindow(secondaryAppWindow, $event),
-			() => secondaryAppWindow = undefined,
-			() => sendMessage(secondaryAppWindow, "dom-ready", environment, onNext)
-		);
+			}, 
+			url: path.join("file://", __dirname, "src/app-secondary/index.html"),
+			onClose: $event => secondaryAppWindow = closeWindow(secondaryAppWindow, $event),
+			onClosed: () => secondaryAppWindow = undefined,
+			onceDomReady: () => sendMessage(secondaryAppWindow, "dom-ready", environment, onNext),
+			onceShow: () => {
+				if (environment.openDevTools) {
+					secondaryAppWindow.webContents.openDevTools({ mode: "detach" });
+				}
+			}
+		});
 	}
 	else {
 		showWindow(secondaryAppWindow, onNext);
@@ -146,17 +141,27 @@ function createSecondaryAppWindow(onNext) {
 
 function createAboutWindow(onNext) {
 	if (aboutWindow === undefined) {
-		aboutWindow = createWindow(
-			{
+		aboutWindow = createWindow({
+			options: {
 				width: 550,
 				height: process.platform !== "darwin" ? 305 : 280,
-				icon: environment.icon
+				icon: environment.icon,
+				show: false,
+				resizable: false
 			},
-			path.join("file://", __dirname, "src/about/index.html"),
-			$event => aboutWindow = closeWindow(aboutWindow, $event),
-			() => aboutWindow = undefined,
-			() => sendMessage(aboutWindow, "dom-ready", environment, onNext)
-		);
+			url: path.join("file://", __dirname, "src/about/index.html"),
+			onClose: $event => aboutWindow = closeWindow(aboutWindow, $event),
+			onClosed: () => aboutWindow = undefined,
+			onceDomReady: () => {
+				aboutWindow.setMenuBarVisibility(false);
+				sendMessage(aboutWindow, "dom-ready", environment, onNext);
+			},
+			onceShow: () => {
+				if (environment.openDevTools) {
+					aboutWindow.webContents.openDevTools({ mode: "detach" });
+				}
+			}
+		});
 	}
 	else {
 		showWindow(aboutWindow, onNext);
@@ -165,17 +170,27 @@ function createAboutWindow(onNext) {
 
 function createUpdateWindow(onNext) {
 	if (updateWindow === undefined) {
-		updateWindow = createWindow(
-			{
+		updateWindow = createWindow({
+			options: {
 				width: 550,
 				height: process.platform !== "darwin" ? 305 : 280,
-				icon: environment.icon
+				icon: environment.icon,
+				show: false,
+				resizable: false
 			},
-			path.join("file://", __dirname, "src/update/index.html"),
-			$event => updateWindow = closeWindow(updateWindow, $event),
-			() => updateWindow = undefined,
-			() => sendMessage(updateWindow, "dom-ready", environment, onNext)
-		);
+			url: path.join("file://", __dirname, "src/update/index.html"),
+			onClose: $event => updateWindow = closeWindow(updateWindow, $event),
+			onClosed: () => updateWindow = undefined,
+			onceDomReady: () => {
+				updateWindow.setMenuBarVisibility(false);
+				sendMessage(updateWindow, "dom-ready", environment, onNext);
+			},
+			onceShow: () => {
+				if (environment.openDevTools) {
+					updateWindow.webContents.openDevTools({ mode: "detach" });
+				}
+			}
+		});
 	}
 	else {
 		showWindow(updateWindow, onNext);
@@ -226,7 +241,9 @@ function createMenu(authenticatedInfo) {
 				{ role: "zoomin" },
 				{ role: "zoomout" },
 				{ type: "separator" },
-				{ role: "togglefullscreen" }
+				{ role: "togglefullscreen" },
+				{ type: "separator" },
+				{ role: "toggledevtools" }
 			]
 		},
 		{
@@ -264,14 +281,28 @@ function createMenu(authenticatedInfo) {
 		}
 	]);
 
-	if (environment.isDebug || environment.openDevTools) {
-		template[2].submenu = template[2].submenu.concat([
-			{ type: "separator" },
-			{ role: "toggledevtools" }
-		]);
-	}
-
 	electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(template));
+}
+
+function sendMessage(window, event, data, onNext) {
+	if (window !== undefined) {
+		window.webContents.send(event, data);
+	}
+	if (onNext !== undefined) {
+		onNext();
+	}
+}
+
+function sendMessageToApp(appWindow, event, args, onNext) {
+	sendMessage(appWindow, "electron.ipc2app", { event: event, args: args }, onNext);
+}
+
+function sendMessageToPrimaryApp(event, args, onNext) {
+	sendMessageToApp(primaryAppWindow, event, args, onNext);
+}
+
+function sendMessageToSecondaryApp(event, args, onNext) {
+	sendMessageToApp(secondaryAppWindow, event, args, onNext);
 }
 
 // -----------------------------------------------------
@@ -362,6 +393,8 @@ electron.ipcMain.on("app.updater", (_, $request) => {
 
 electron.app.on("ready", () => {
 	createMenu();
+	createAboutWindow();
+	createUpdateWindow();
 	createPrimaryAppWindow();
 	// setTimeout(() => createSecondaryAppWindow(), 6789);
 
@@ -376,9 +409,9 @@ electron.app.on("ready", () => {
 	setTimeout(() => {
 		checkForUpdates();
 		if (environment.isDebug) {
-			setTimeout(() => console.log("<<Environment>>", environment), 3000);
+			setTimeout(() => console.log("<<Environment>>", environment), 1234);
 		}
-	}, process.platform === "win32" ? 3000 : 13000);
+	}, process.platform === "win32" ? 3456 : 12345);
 });
 
 electron.app.on("activate", () => createPrimaryAppWindow());
@@ -398,19 +431,14 @@ electron.ipcMain.on("App", (_, $info) => {
 		const compareVersions = require("compare-versions");
 		environment.app = $info.Data.app;
 		environment.app.homepage = $info.Data.app.homepage || $info.Data.URIs.activations;
-		environment.app.version = compareVersions(electron.app.getVersion(), environment.app.version) > 0
-			? electron.app.getVersion()
-			: environment.app.version;
+		environment.app.version = compareVersions(electron.app.getVersion(), environment.app.version) > 0 ? electron.app.getVersion() : environment.app.version;
 		environment.session = $info.Data.session;
 		environment.URIs = $info.Data.URIs;
-		environment.options = $info.Data.options;
-		environment.organizations = $info.Data.organizations;
 		environment.services = $info.Data.services;
 		environment.languages = $info.Data.languages;
-		if (!environment.isDebug && environment.app.debug) {
-			environment.isDebug = true;
-			createMenu(environment.session.token && environment.session.token.uid && environment.session.token.uid !== "");
-		}
+		environment.options = $info.Data.options;
+		environment.organizations = $info.Data.organizations;
+		environment.isDebug = !environment.isDebug ? environment.app.debug : true;
 		sendMessage(aboutWindow, "update-info", environment);
 		sendMessage(updateWindow, "update-info", environment);
 	}

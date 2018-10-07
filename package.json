@@ -40,7 +40,6 @@
 		"linux": {
 			"category": "Office",
 			"target": [
-				"zip",
 				"AppImage"
 			]
 		},
