@@ -367,7 +367,7 @@ electron.app.on("ready", () => {
 		const childProcess = require("child_process");
 		childProcess.exec("NET SESSION", function(err, so, se) {
 			environment.canInstallUpdates = se.length === 0;
-    });
+		});
 	}
 	else {
 		environment.canInstallUpdates = true;
