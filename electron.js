@@ -130,7 +130,8 @@ function createSecondaryAppWindow(onNext) {
 				height: 768,
 				minWidth: 320,
 				minHeight: 480,
-				icon: environment.icon
+				icon: environment.icon,
+				show: false
 			},
 			path.join("file://", __dirname, "src/app-secondary/index.html"),
 			$event => secondaryAppWindow = closeWindow(secondaryAppWindow, $event),
@@ -362,12 +363,11 @@ electron.ipcMain.on("app.updater", (_, $request) => {
 electron.app.on("ready", () => {
 	createMenu();
 	createPrimaryAppWindow();
+	// setTimeout(() => createSecondaryAppWindow(), 6789);
 
 	if (process.platform === "win32") {
 		const childProcess = require("child_process");
-		childProcess.exec("NET SESSION", function(err, so, se) {
-			environment.canInstallUpdates = se.length === 0;
-		});
+		childProcess.exec("NET SESSION", ($error, $stdout, $stderr) => environment.canInstallUpdates = $stderr.length === 0);
 	}
 	else {
 		environment.canInstallUpdates = true;
