@@ -22,8 +22,12 @@ electron.ipcRenderer.on("add-message", (_, $message) => {
 
 electron.ipcRenderer.on("update-state", (_, $state) => {
 	const isReadyToInstall = $state !== undefined ? $state : false;
-	const button = document.getElementById("action");
-	button.innerText = isReadyToInstall ? "Install updates" : "Close";
-	button.classList.remove(isReadyToInstall ? "false" : "true");
-	button.classList.add(isReadyToInstall ? "true" : "false");
+	const action = document.getElementById("action");
+	action.innerText = isReadyToInstall ? "Install updates" : "Close";
+	action.classList.remove(isReadyToInstall ? "false" : "true");
+	action.classList.add(isReadyToInstall ? "true" : "false");
+	const announcement = document.getElementById("announcement");
+	announcement.innerText = isReadyToInstall ? "Updates will be installed when reload the app" : "";
+	announcement.classList.remove(isReadyToInstall ? "false" : "true");
+	announcement.classList.add(isReadyToInstall ? "true" : "false");
 });

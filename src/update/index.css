@@ -32,3 +32,14 @@ body > section > button.true {
 body > section > button.false {
 	color: #999;
 }
+body > section > span {
+	float: left;
+	line-height: 64px;
+	margin-left: 16px;
+}
+body > section > span.true {
+	color: #999;
+}
+body > section > span.false {
+	color: transparent;
+}

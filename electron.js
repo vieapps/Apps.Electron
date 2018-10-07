@@ -265,34 +265,58 @@ autoUpdater.autoInstallOnAppQuit = true;
 
 function checkForUpdates() {
 	if (!autoUpdater.checkingForUpdates) {
-		sendMessage(updateWindow, "add-message", "Checking for updates...");
+		sendMessage(updateWindow, "add-message", "Checking for updates");
 		autoUpdater.checkingForUpdates = true;
 		autoUpdater.checkForUpdates();
 	}
 }
 
 autoUpdater.on("error", () => {
-	sendMessage(updateWindow, "add-message", "Error occurred while checking for updates... Please try again later!");
+	sendMessage(updateWindow, "add-message", "Error occurred while checking for updates, try again later");
 	autoUpdater.checkingForUpdates = false;
 });
 
 autoUpdater.on("update-available", () => {
-	createUpdateWindow(() => sendMessage(updateWindow, "add-message", "Updates are available"));
+	sendMessage(updateWindow, "add-message", "Updates are available");
 });
 
 autoUpdater.on("update-not-available", () => {
-	sendMessage(updateWindow, "add-message", "No update is available");
+	sendMessage(updateWindow, "add-message", "No new update is available");
 	autoUpdater.checkingForUpdates = false;
 });
 
-autoUpdater.on("download-progress", (_, $progress) => {
-	sendMessage(updateWindow, "add-message", "Downloading...");
+autoUpdater.on("download-progress", $progress => {
+	let indicators = "";
+	const percent = Math.round($progress.percent);
+	const length = Math.round(percent / 5);
+	for (let index = 0; index < length; index++) {
+		indicators += "=";
+	}
+	let speed = "";
+	if (percent < 100) {
+		speed = Math.round($progress.bytesPerSecond / 1024);
+		if (speed > 0) {
+			speed = Math.round(speed / 1024);
+			speed = speed > 0
+				? speed + " MB/s"
+				: Math.round($progress.bytesPerSecond / 1024) + " KB/s";
+		}
+		else {
+			speed = $progress.bytesPerSecond + " B/s";
+		}
+		speed = " (" + speed + ")";
+	}
+	else {
+		indicators += ">";
+	}
+	sendMessage(updateWindow, "add-message", indicators + "> " + percent + "%" + speed);
 });
 
 autoUpdater.on("update-downloaded", () => {
+	autoUpdater.checkingForUpdates = false;
 	createUpdateWindow(() => {
-		sendMessage(updateWindow, "add-message", "Updates downloaded...");
 		sendMessage(updateWindow, "update-state", true);
+		sendMessage(updateWindow, "add-message", "Click the button 'Install updates' to apply");
 	});
 });
 
@@ -323,7 +347,7 @@ electron.app.on("ready", () => {
 	setTimeout(() => {
 		checkForUpdates();
 		if (environment.isDebug) {
-			setTimeout(() => console.log("<<Environment>>", environment), 5000);
+			setTimeout(() => console.log("<<Environment>>", environment), 3000);
 		}
 	}, 13000);
 });
