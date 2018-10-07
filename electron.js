@@ -16,7 +16,7 @@ const environment = {
 		copyright: "© 2018 VIEApps.net",
 		license: "Apache-2.0",
 		frameworks: ".net core 2.1 - ionic 4.0 - angular 6.1.9 - cordova 8.0.0",
-		homepageURI: "https://vieapps.net/"
+		homepage: "https://vieapps.net/"
 	},
 	session: {
 		token: {}
