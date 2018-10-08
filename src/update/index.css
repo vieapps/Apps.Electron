@@ -2,18 +2,18 @@ body,
 html {
 	user-select: none;
 	-webkit-user-select: none;
-	-webkit-app-region: drag;
 }
 body {
-	margin: 0;
-	font-size: 12px;
 	font-family: 'Helvetica', 'Arial', 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, 'ＭＳ Ｐゴシック', 'MS PGothic', sans-serif;
+	font-size: 12px;
+	margin: 0;
 }
-body > div {
-	padding: 16px;
-	margin-bottom: 64px;
+section {
+	margin: 16px;
+	overflow-y: auto;
+	overflow-x: hidden;
 }
-body > section {
+footer {
 	position: fixed;
 	bottom: 0;
 	width: 100%;
@@ -21,16 +21,16 @@ body > section {
 	text-align: right;
 	background-color: #fff;
 }
-body > section.darwin {
+footer.darwin {
 	height: 64px;
 }
-body > section > button {
+footer > button {
 	padding: 10px 20px;
 	margin: 16px;
 }
-body > section > button.ready {
-	font-weight: bold;
-}
-body > section > button.darwin {
+footer > button.darwin {
 	border-radius: 5px;
+}
+footer > button.ready {
+	font-weight: bold;
 }

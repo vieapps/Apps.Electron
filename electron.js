@@ -371,7 +371,7 @@ autoUpdater.on("update-downloaded", () => {
 			sendMessage(updateWindow, "add-message", "Click the 'Install updates' button to install and relaunch");
 		}
 		else {
-			sendMessage(updateWindow, "add-message", "Click the 'Quit' button to terminate the app, and relaunch with administrator privileges (right-click on app shortcut/file and select 'Run as administrator') to apply new updates");
+			sendMessage(updateWindow, "add-message", "Click the 'Quit' button to terminate the app, manual relaunch with administrator privileges to install new updates (relaunch by right-click on app shortcut/file and select 'Run as administrator')");
 		}
 	});
 });
@@ -455,7 +455,7 @@ electron.ipcMain.on("Users", (_, $info) => {
 		}
 		createMenu("LogIn" == $info.Type);
 	}
-	else if ($info.Type !== undefined && $info.Type.Service !== "") {
+	else if ($info.Type !== undefined && $info.Type.Service !== undefined) {
 		if ("Profile" == $info.Type.Object && $info.Data.ID == environment.session.token.uid) {
 			environment.profile = $info.Data;
 			createMenu($info.Data.Name);

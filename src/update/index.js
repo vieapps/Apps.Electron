@@ -11,15 +11,17 @@ electron.ipcRenderer.on("dom-ready", (_, $environment) => {
 		}
 		electron.remote.getCurrentWindow().close();
 	});
+	document.getElementById("messages").style.height = (window.innerHeight - 80) + "px";
 });
 
 electron.ipcRenderer.on("clear-messages", () => document.getElementById("messages").innerHTML = "");
 
 electron.ipcRenderer.on("add-message", (_, $message) => {
 	const message = document.createElement("div");
-	message.innerHTML = $message || ".";
+	message.innerText = $message || ".";
 	const container = document.getElementById("messages");
 	container.appendChild(message);
+	container.scrollTop = container.scrollHeight - container.clientHeight;
 });
 
 electron.ipcRenderer.on("update-state", (_, $state) => {
