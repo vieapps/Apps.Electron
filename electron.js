@@ -74,22 +74,18 @@ function closeWindow(window, event) {
 
 function createPrimaryAppWindow(onNext) {
 	if (primaryAppWindow === undefined) {
-		const screen = electron.screen.getPrimaryDisplay().size;
+		const displaySize = electron.screen.getPrimaryDisplay().size;
 		primaryAppWindow = createWindow({
 			options: {
-				width: screen.width > 1280 ? 1280 : 1366,
-				height: screen.height > 800 ? 800 : 700,
+				width: displaySize.width > 1280 ? 1280 : 1024,
+				height: displaySize.height > 800 ? 800 : 700,
 				minWidth: 320,
 				minHeight: 480,
 				icon: environment.icon,
 				show: false
 			}, 
 			url: path.join("file://", __dirname, "src/app-primary/index.html"),
-			onClose: $event => {
-				if (process.platform === "darwin") {
-					primaryAppWindow = closeWindow(primaryAppWindow, $event);
-				}
-			},
+			onClose: $event => primaryAppWindow = process.platform === "darwin" ? closeWindow(primaryAppWindow, $event) : undefined,
 			onClosed: () => {
 				if (process.platform === "darwin") {
 					primaryAppWindow = undefined;
@@ -117,16 +113,21 @@ function createSecondaryAppWindow(onNext) {
 		secondaryAppWindow = createWindow({
 			options: {
 				width: 480,
-				height: 768,
+				height: 700,
 				minWidth: 320,
 				minHeight: 480,
+				x: 100,
+				y: 100,
 				icon: environment.icon,
 				show: false
 			}, 
 			url: path.join("file://", __dirname, "src/app-secondary/index.html"),
 			onClose: $event => secondaryAppWindow = closeWindow(secondaryAppWindow, $event),
 			onClosed: () => secondaryAppWindow = undefined,
-			onceDomReady: () => sendMessage(secondaryAppWindow, "dom-ready", environment, onNext),
+			onceDomReady: () => {
+				secondaryAppWindow.setMenuBarVisibility(false);
+				sendMessage(secondaryAppWindow, "dom-ready", environment, onNext);
+			},
 			onceShow: () => {
 				if (environment.openDevTools) {
 					secondaryAppWindow.webContents.openDevTools({ mode: "detach" });
@@ -147,7 +148,9 @@ function createAboutWindow(onNext) {
 				height: process.platform !== "darwin" ? 305 : 280,
 				icon: environment.icon,
 				show: false,
-				resizable: false
+				resizable: false,
+				minimizable: false,
+				maximizable: false
 			},
 			url: path.join("file://", __dirname, "src/about/index.html"),
 			onClose: $event => aboutWindow = closeWindow(aboutWindow, $event),
@@ -176,7 +179,9 @@ function createUpdateWindow(onNext) {
 				height: process.platform !== "darwin" ? 305 : 280,
 				icon: environment.icon,
 				show: false,
-				resizable: false
+				resizable: false,
+				minimizable: false,
+				maximizable: false
 			},
 			url: path.join("file://", __dirname, "src/update/index.html"),
 			onClose: $event => updateWindow = closeWindow(updateWindow, $event),
@@ -203,12 +208,12 @@ function createMenu(authenticatedInfo) {
 			label: electron.app.getName(),
 			submenu: [
 				{
-					label: "About " + electron.app.getName(),
+					label: "About",
 					click: () => createAboutWindow()
 				},
 				{ type: "separator" },
 				{
-					label: "Check for updates...",
+					label: "Check for updates",
 					click: () => createUpdateWindow(() => sendMessage(updateWindow, "clear-messages", undefined, () => checkForUpdates()))
 				},
 				{
@@ -217,7 +222,15 @@ function createMenu(authenticatedInfo) {
 				{
 					label: authenticatedInfo ? "Profile" + (typeof authenticatedInfo === "string" ? " (" + authenticatedInfo + ")" : "") : "Log In",
 					click: () => sendMessageToPrimaryApp("Navigate", { Type: authenticatedInfo ? "Profile" : "LogIn" })
-				}
+				},
+				// {
+				// 	type: "separator"
+				// },
+				// {
+				// 	label: "Messages",
+				// 	accelerator: "CommandOrControl+M",
+				// 	click: () => createSecondaryAppWindow()
+				// }
 			]
 		},
 		{
@@ -249,7 +262,6 @@ function createMenu(authenticatedInfo) {
 		{
 			role: "window",
 			submenu: [
-				{ role: "minimize" },
 				{ role: "close" }
 			]
 		}
@@ -396,7 +408,6 @@ electron.app.on("ready", () => {
 	createAboutWindow();
 	createUpdateWindow();
 	createPrimaryAppWindow();
-	// setTimeout(() => createSecondaryAppWindow(), 6789);
 
 	if (process.platform === "win32") {
 		const childProcess = require("child_process");
@@ -439,6 +450,7 @@ electron.ipcMain.on("App", (_, $info) => {
 		environment.options = $info.Data.options;
 		environment.organizations = $info.Data.organizations;
 		environment.isDebug = !environment.isDebug ? environment.app.debug : true;
+		// createSecondaryAppWindow();
 		sendMessage(aboutWindow, "update-info", environment);
 	}
 	if (environment.isDebug) {
