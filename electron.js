@@ -13,9 +13,9 @@ const environment = {
 		name: "VIEApps NGX",
 		description: "Wonderful apps from VIEApps.net",
 		version: "1.0.0",
-		copyright: "© 2018 VIEApps.net",
+		copyright: "© 2019 VIEApps.net",
 		license: "Apache-2.0",
-		frameworks: ".net core 2.1 - ionic 4.0 - angular 6.1.9 - cordova 8.0.0",
+		frameworks: "ionic 4.0 - angular 7.0 - cordova 9.0",
 		homepage: "https://vieapps.net/"
 	},
 	session: {
@@ -29,7 +29,12 @@ let primaryAppWindow, secondaryAppWindow, aboutWindow, updateWindow;
 
 function createWindow(createOptions) {
 	createOptions = createOptions || {};
-	const window = new electron.BrowserWindow(createOptions.options || {});
+	createOptions["options"] = createOptions.options || {}
+	createOptions.options["webPreferences"] = {
+		nodeIntegration: true,
+		backgroundThrottling: false
+	};
+	const window = new electron.BrowserWindow(createOptions.options);
 	window.loadURL(createOptions.url);
 	if (createOptions.onShow !== undefined) {
 		window.on("show", $event => createOptions.onShow($event));

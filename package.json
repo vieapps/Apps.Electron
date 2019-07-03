@@ -12,7 +12,7 @@
 	"license": "Apache-2.0",
 	"build": {
 		"appId": "net.vieapps.apps",
-		"copyright": "© 2018 VIEApps.net",
+		"copyright": "© 2019 VIEApps.net",
 		"asar": true,
 		"files": [
 			"src/**/*",
@@ -74,13 +74,13 @@
 		"electron-build-linux": "node_modules/.bin/build --linux --x64"
 	},
 	"devDependencies": {
-		"electron": "^3.0.3",
-		"electron-builder": "^20.28.4"
+		"electron": "^5.0.6",
+		"electron-builder": "^20.44.4"
 	},
 	"dependencies": {
-		"compare-versions": "^3.4.0",
+		"compare-versions": "^3.5.0",
 		"crypto-js": "^3.1.9-1",
-		"electron-log": "^2.2.17",
-		"electron-updater": "^3.1.2"
+		"electron-log": "^3.0.6",
+		"electron-updater": "^4.0.14"
 	}
 }
