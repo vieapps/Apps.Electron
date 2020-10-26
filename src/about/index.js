@@ -9,23 +9,26 @@ function updateInfo($environment) {
 		packageJson = require(path.join(__dirname, "../../package.json"));
 	}
 	catch (error) {
-		packageJson = {
-			build: {}
-		};
+		packageJson = {};
 	}
 	
 	homepageURI = $environment.app.homepage || packageJson.homepage;
+	let license = $environment.app.license || packageJson.license;
+	license += license.indexOf("license") < 0 ? " license" : "";
 	const name = $environment.app.name || packageJson.productName;
-	document.title = "About " + name;
-
-	document.querySelector(".title").innerText = name;
-	document.querySelector(".description").innerText = $environment.app.description || packageJson.description;
-	document.querySelector(".version").innerText = "v" + ($environment.app.version || packageJson.version);
-	document.querySelector(".copyright").innerHTML = ($environment.app.copyright || packageJson.build.copyright) + "<br/>Distributed under " + ($environment.app.license || packageJson.license) + " license";
-
+	const description = $environment.app.description || packageJson.description;
+	const version = $environment.app.version || packageJson.version;
+	const copyright = $environment.app.copyright || packageJson.copyright;
 	let frameworks = "";
 	["electron", "chrome", "node", "v8"].forEach(name => frameworks += (frameworks != "" ? " - " : "") + name + " " + process.versions[name]);
-	document.querySelector(".frameworks").innerHTML = "Powered by <b>" + ($environment.app.frameworks || packageJson.appFrameworks) + " - " + frameworks + "</b> and love from VIEApps.net";
+	frameworks = ($environment.app.frameworks || packageJson.frameworks) + " - " + frameworks;
+
+	document.title = "About " + name;
+	document.querySelector(".title").innerText = name;
+	document.querySelector(".description").innerText = description;
+	document.querySelector(".version").innerText = "v" + version;
+	document.querySelector(".copyright").innerHTML = copyright + " - Distributed under " + license;
+	document.querySelector(".frameworks").innerHTML = "Powered by <b>" + frameworks + "</b> and love from " + copyright.replace("©", "").trim();
 }
 
 electron.ipcRenderer.on("dom-ready", (_, $environment) => {

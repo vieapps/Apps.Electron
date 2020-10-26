@@ -4,18 +4,18 @@ const electron = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const environment = {
-	icon: path.join(__dirname, "src/app-primary/assets/images/icon.png"),
+	icon: path.join(__dirname, "build/icon.png"),
 	isDebug: process.argv.slice(2).findIndex(arg => arg === "/dev" || arg === "/debug") > -1,
 	openDevTools: process.argv.slice(2).findIndex(arg => arg === "/dev" || arg === "/devtools") > -1,
 	canInstallUpdates: false,
 	app: {
-		id: "vieapps-ngx",
-		name: "VIEApps NGX",
-		description: "Wonderful apps from VIEApps.net",
+		id: "vieapps-ngx-portals",
+		name: "NGX Portals",
+		description: "Manage information and related services of CMS Portals",
 		version: "1.0.0",
-		copyright: "© 2019 VIEApps.net",
+		copyright: "© VIEApps.net",
 		license: "Apache-2.0",
-		frameworks: "ionic 4.0 - angular 7.0 - cordova 9.0",
+		frameworks: "ionic 5.3 - angular 8.2 - cordova 10.0",
 		homepage: "https://vieapps.net/"
 	},
 	session: {
@@ -32,6 +32,8 @@ function createWindow(createOptions) {
 	createOptions["options"] = createOptions.options || {}
 	createOptions.options["webPreferences"] = {
 		nodeIntegration: true,
+		enableRemoteModule: true,
+		worldSafeExecuteJavaScript: true,
 		backgroundThrottling: false
 	};
 	const window = new electron.BrowserWindow(createOptions.options);
@@ -82,10 +84,10 @@ function createPrimaryAppWindow(onNext) {
 		const displaySize = electron.screen.getPrimaryDisplay().size;
 		primaryAppWindow = createWindow({
 			options: {
-				width: displaySize.width > 1280 ? 1280 : 1024,
-				height: displaySize.height > 800 ? 800 : 700,
-				minWidth: 320,
-				minHeight: 480,
+				width: displaySize.width > 1680 ? 1680 : displaySize.width > 1440 ? 1440 : displaySize.width > 1366 ? 1366 : displaySize.width > 1280 ? 1280 : 1024,
+				height: displaySize.height > 900 ? 900 : displaySize.height > 800 ? 800 : 700,
+				minWidth: 480,
+				minHeight: 320,
 				icon: environment.icon,
 				show: false
 			}, 
@@ -210,7 +212,7 @@ function createUpdateWindow(onNext) {
 function createMenu(authenticatedInfo) {
 	const template = [
 		{
-			label: electron.app.getName(),
+			label: environment.app !== undefined ? environment.app.name : electron.app.getName(),
 			submenu: [
 				{
 					label: "About",
@@ -225,7 +227,7 @@ function createMenu(authenticatedInfo) {
 					type: "separator"
 				},
 				{
-					label: authenticatedInfo ? "Profile" + (typeof authenticatedInfo === "string" ? " (" + authenticatedInfo + ")" : "") : "Log In",
+					label: authenticatedInfo !== undefined ? "Profile" + (typeof authenticatedInfo === "string" ? " (" + authenticatedInfo + ")" : "") : "Log In",
 					click: () => sendMessageToPrimaryApp("Navigate", { Type: authenticatedInfo ? "Profile" : "LogIn" })
 				},
 				// {
@@ -330,25 +332,25 @@ autoUpdater.checkingForUpdates = false;
 autoUpdater.autoInstallOnAppQuit = false;
 
 function checkForUpdates() {
-	if (!autoUpdater.checkingForUpdates) {
-		sendMessage(updateWindow, "add-message", "Checking for updates");
+	if (process.env.NODE_ENV !== "development" && !autoUpdater.checkingForUpdates) {
+		sendMessage(updateWindow, "add-message", { message: "Checking for updates" });
 		autoUpdater.checkingForUpdates = true;
 		autoUpdater.checkForUpdates();
 	}
 }
 
-autoUpdater.on("error", () => {
-	sendMessage(updateWindow, "add-message", "Error occurred while checking for updates, try again later");
+autoUpdater.on("error", $error => {
+	sendMessage(updateWindow, "add-message", { message: "Error occurred while checking for updates, try again later." + "<br/>" + "Details:" + JSON.stringify($error) });
 	autoUpdater.checkingForUpdates = false;
 });
 
-autoUpdater.on("update-available", () => {
-	sendMessage(updateWindow, "add-message", "New updates are available");
-	sendMessage(updateWindow, "add-message", "Start to download the updates");
+autoUpdater.on("update-available", $info => {
+	sendMessage(updateWindow, "add-message", { message: "New updates are available (version v" + $info.version + ")" });
+	sendMessage(updateWindow, "add-message", { message: "Start to download the updates" });
 });
 
-autoUpdater.on("update-not-available", () => {
-	sendMessage(updateWindow, "add-message", "No new update is available");
+autoUpdater.on("update-not-available", $info => {
+	sendMessage(updateWindow, "add-message", { message: "No new update is available, you are at the latest version (v" + $info.version + ")" });
 	autoUpdater.checkingForUpdates = false;
 });
 
@@ -376,20 +378,15 @@ autoUpdater.on("download-progress", $progress => {
 	else {
 		indicators += ">";
 	}
-	sendMessage(updateWindow, "add-message", indicators + "> " + percent + "%" + speed);
+	sendMessage(updateWindow, "add-message", { id: "progress", message: indicators + "> " + percent + "%" + speed });
 });
 
-autoUpdater.on("update-downloaded", () => {
+autoUpdater.on("update-downloaded", $info => {
 	autoUpdater.checkingForUpdates = false;
 	createUpdateWindow(() => {
 		sendMessage(updateWindow, "update-state", { ready: true, canInstall: environment.canInstallUpdates });
-		sendMessage(updateWindow, "add-message", "Updates are downloaded");
-		if (environment.canInstallUpdates) {
-			sendMessage(updateWindow, "add-message", "Click the 'Install updates' button to install and relaunch");
-		}
-		else {
-			sendMessage(updateWindow, "add-message", "Click the 'Quit' button to terminate the app, manual relaunch with administrator privileges to install new updates (relaunch by right-click on app shortcut/file and select 'Run as administrator')");
-		}
+		sendMessage(updateWindow, "add-message", { message: "Updates are downloaded (version v" + $info.version + ")" });
+		sendMessage(updateWindow, "add-message", { message: environment.canInstallUpdates ? "Click the 'Install updates' button to install and relaunch" : "Click the 'Quit' button to terminate the app, manual relaunch with administrator privileges to install new updates (relaunch by right-click on app shortcut/file and select 'Run as administrator')" });
 	});
 });
 
@@ -413,6 +410,7 @@ electron.app.on("ready", () => {
 	createAboutWindow();
 	createUpdateWindow();
 	createPrimaryAppWindow();
+	// createSecondaryAppWindow();
 
 	if (process.platform === "win32") {
 		const childProcess = require("child_process");
@@ -422,12 +420,7 @@ electron.app.on("ready", () => {
 		environment.canInstallUpdates = true;
 	}
 
-	setTimeout(() => {
-		checkForUpdates();
-		if (environment.isDebug) {
-			setTimeout(() => console.log("<<Environment>>", environment), 1234);
-		}
-	}, process.platform === "win32" ? 3456 : 12345);
+	setTimeout(() => checkForUpdates(), process.platform === "win32" ? 3456 : 12345);
 });
 
 electron.app.on("activate", () => createPrimaryAppWindow());
@@ -458,27 +451,21 @@ electron.ipcMain.on("App", (_, $info) => {
 		// createSecondaryAppWindow();
 		sendMessage(aboutWindow, "update-info", environment);
 	}
-	if (environment.isDebug) {
-		console.log("[App]", $info);
-	}
 });
 
 electron.ipcMain.on("Users", (_, $info) => {
-	if ("LogOut" == $info.Type || "LogIn" == $info.Type) {
+	if ("LogOut" === $info.Type || "LogIn" === $info.Type) {
 		environment.session = $info.Data;
+		environment.profile = {};
 		if ("LogOut" == $info.Type) {
-			environment.session.account = {};
-			environment.profile = {};
+			if (environment.session !== undefined) {
+				environment.session.account = {};
+			}
 		}
-		createMenu("LogIn" == $info.Type);
+		createMenu();
 	}
-	else if ($info.Type !== undefined && $info.Type.Service !== undefined) {
-		if ("Profile" == $info.Type.Object && $info.Data.ID == environment.session.token.uid) {
-			environment.profile = $info.Data;
-			createMenu($info.Data.Name);
-		}
-	}
-	if (environment.isDebug) {
-		console.log("[Users]", $info);
+	else if ("Profile" == $info.Type && environment.session !== undefined && environment.session.token !== undefined) {
+		environment.profile = $info.Data;
+		createMenu($info.Data.Name);
 	}
 });

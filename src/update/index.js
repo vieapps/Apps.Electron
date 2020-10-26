@@ -16,11 +16,14 @@ electron.ipcRenderer.on("dom-ready", (_, $environment) => {
 
 electron.ipcRenderer.on("clear-messages", () => document.getElementById("messages").innerHTML = "");
 
-electron.ipcRenderer.on("add-message", (_, $message) => {
-	const message = document.createElement("div");
-	message.innerText = $message || ".";
+electron.ipcRenderer.on("add-message", (_, $data) => {
 	const container = document.getElementById("messages");
-	container.appendChild(message);
+	let message = $data && $data.id && $data.id !== "" ? document.getElementById($data.id) : undefined;
+	if (!message) {
+		message = document.createElement("div");
+		container.appendChild(message);
+	}
+	message.innerHTML = $data.message || ".";
 	container.scrollTop = container.scrollHeight - container.clientHeight;
 });
 
