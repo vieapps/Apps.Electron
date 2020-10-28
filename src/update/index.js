@@ -17,14 +17,17 @@ electron.ipcRenderer.on("dom-ready", (_, $environment) => {
 electron.ipcRenderer.on("clear-messages", () => document.getElementById("messages").innerHTML = "");
 
 electron.ipcRenderer.on("add-message", (_, $data) => {
-	const container = document.getElementById("messages");
-	let message = $data && $data.id && $data.id !== "" ? document.getElementById($data.id) : undefined;
+	const messages = document.getElementById("messages");
+	let message = $data.id && $data.id !== "" ? document.getElementById($data.id) : undefined;
 	if (!message) {
 		message = document.createElement("div");
-		container.appendChild(message);
+		messages.appendChild(message);
+		if ($data.id && $data.id !== "") {
+			message.setAttribute("id", $data.id)
+		}
 	}
 	message.innerHTML = $data.message || ".";
-	container.scrollTop = container.scrollHeight - container.clientHeight;
+	messages.scrollTop = messages.scrollHeight - messages.clientHeight;
 });
 
 electron.ipcRenderer.on("update-state", (_, $state) => {
