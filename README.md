@@ -4,7 +4,7 @@ The seeds to build distributions of your "desktop" apps with Electron for runnin
 Steps:
 - Clone this repo to your computer
 - Copy all ready-to-go files of your app into folder "src/app-primary"
-- Replace the icons (in the "build" folder) by your app icon - use this convert tool (https://iconverticons.com/online/) if you need to create icon files from your PNG image
+- Replace the icons (in the "build" folder) by your app icon - use this convert tool (https://cloudconvert.com) if you need to create icon files from your PNG image
 - Type "npm install" to install all dependencies (in terminal/command prompt at the project folder, of course)
 - Type "npm run electron" to test your "desktop" app that packed with Electron
 - Type "npm run electron-build" to build the distributions of your app (macOS, Windows & Linux)

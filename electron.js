@@ -1,5 +1,4 @@
 const path = require("path");
-const console = require("console");
 const electron = require("electron");
 const { autoUpdater } = require("electron-updater");
 
@@ -15,7 +14,7 @@ const environment = {
 		version: "1.0.0",
 		copyright: "© VIEApps.net",
 		license: "Apache-2.0",
-		frameworks: "ionic 5.3 - angular 8.2 - cordova 10.0",
+		frameworks: "ionic 5.6 - angular 11.2 - cordova 10.0",
 		homepage: "https://vieapps.net/"
 	},
 	session: {
@@ -25,14 +24,15 @@ const environment = {
 
 // -----------------------------------------------------
 
-let primaryAppWindow, secondaryAppWindow, aboutWindow, updateWindow;
+let primaryAppWindow, primaryAppSecondWindow, secondaryAppWindow, aboutWindow, updateWindow;
 
 function createWindow(createOptions) {
 	createOptions = createOptions || {};
-	createOptions["options"] = createOptions.options || {}
-	createOptions.options["webPreferences"] = {
+	createOptions.options = createOptions.options || {}
+	createOptions.options.webPreferences = {
 		nodeIntegration: true,
 		enableRemoteModule: true,
+		contextIsolation: false,
 		worldSafeExecuteJavaScript: true,
 		backgroundThrottling: false
 	};
@@ -79,10 +79,11 @@ function closeWindow(window, event) {
 	}
 }
 
-function createPrimaryAppWindow(onNext) {
-	if (primaryAppWindow === undefined) {
+function createPrimaryAppWindow(onNext, isSecondInstance) {
+	let windowInstance = !!isSecondInstance ? primaryAppSecondWindow : primaryAppWindow;
+	if (windowInstance === undefined) {
 		const displaySize = electron.screen.getPrimaryDisplay().size;
-		primaryAppWindow = createWindow({
+		windowInstance = createWindow({
 			options: {
 				width: displaySize.width > 1680 ? 1680 : displaySize.width > 1440 ? 1440 : displaySize.width > 1366 ? 1366 : displaySize.width > 1280 ? 1280 : 1024,
 				height: displaySize.height > 900 ? 900 : displaySize.height > 800 ? 800 : 700,
@@ -92,26 +93,34 @@ function createPrimaryAppWindow(onNext) {
 				show: false
 			}, 
 			url: path.join("file://", __dirname, "src/app-primary/index.html"),
-			onClose: $event => primaryAppWindow = process.platform === "darwin" ? closeWindow(primaryAppWindow, $event) : undefined,
+			onClose: $event => windowInstance = process.platform === "darwin" ? closeWindow(windowInstance, $event) : undefined,
 			onClosed: () => {
 				if (process.platform === "darwin") {
-					primaryAppWindow = undefined;
+					windowInstance = undefined;
 				}
 				else {
-					electron.app.quit();
+					if (primaryAppWindow === undefined && primaryAppSecondWindow === undefined) {
+						electron.app.quit();
+					}
 				}
 			},
-			onceDomReady: () => sendMessage(primaryAppWindow, "dom-ready", environment, onNext),
+			onceDomReady: () => sendMessage(windowInstance, "dom-ready", environment, onNext),
 			onceShow: () => {
 				if (environment.openDevTools) {
-					primaryAppWindow.webContents.openDevTools({ mode: "right" });
+					windowInstance.webContents.openDevTools({ mode: "right" });
 				}
 			},
-			onReadyToShow: () => primaryAppWindow.show()
+			onReadyToShow: () => windowInstance.show()
 		});
+		if (!!isSecondInstance) {
+			primaryAppSecondWindow = windowInstance;
+		}
+		else {
+			primaryAppWindow = windowInstance;
+		}
 	}
 	else {
-		showWindow(primaryAppWindow, onNext);
+		showWindow(windowInstance, onNext);
 	}
 }
 
@@ -237,7 +246,14 @@ function createMenu(authenticatedInfo) {
 				// 	label: "Messages",
 				// 	accelerator: "CommandOrControl+M",
 				// 	click: () => createSecondaryAppWindow()
-				// }
+				// },
+				{
+					type: "separator"
+				},
+				{
+					label: "Second Instance of CMS Portals",
+					click: () => createPrimaryAppWindow(undefined, true)
+				},
 			]
 		},
 		{

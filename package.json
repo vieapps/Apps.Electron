@@ -81,13 +81,13 @@
 		"electron-build-linux": "node_modules/.bin/electron-builder --linux --x64"
 	},
 	"devDependencies": {
-		"electron": "^10.1.5",
-		"electron-builder": "^22.8.1"
+		"electron": "^13.1.7",
+		"electron-builder": "^22.11.7"
 	},
 	"dependencies": {
 		"compare-versions": "^3.6.0",
 		"crypto-js": "^4.0.0",
-		"electron-log": "^4.2.4",
-		"electron-updater": "^4.3.5"
+		"electron-log": "^4.3.5",
+		"electron-updater": "^4.3.9"
 	}
 }
