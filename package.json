@@ -81,7 +81,7 @@
 		"electron-build-linux": "node_modules/.bin/electron-builder --linux --x64"
 	},
 	"devDependencies": {
-		"electron": "^13.1.7",
+		"electron": "^18.3.7",
 		"electron-builder": "^22.11.7"
 	},
 	"dependencies": {
