@@ -1,65 +1,39 @@
 const path = require("path");
-const electron = require("electron");
 const { pathToFileURL } = require("url");
-const packageJson = require("./package.json");
+const electron = require("electron");
 const { autoUpdater } = require("electron-updater");
-let updateDownloaded = false;
-const localURL = relative => pathToFileURL(path.join(__dirname, relative)).href;
-const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value);
-const isAlive = window => !!window && !window.isDestroyed();
-const trustedDocuments = new WeakMap();
+const log = require("electron-log/main");
 
-function trustedSender(event, windows, relative) {
-	return windows.some(window => {
-		if (!isAlive(window) || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) return false;
-		const document = trustedDocuments.get(window.webContents);
-		return !!document && document.relative === relative && document.url === event.senderFrame.url;
-	});
-}
-
-function isLocalPage(url, relative) {
-	try {
-		const parsed = new URL(url);
-		parsed.hash = "";
-		parsed.search = "";
-		return parsed.href === localURL(relative);
-	}
-	catch (_) { return false; }
-}
-
-function openExternal(url) {
-	try {
-		if (typeof url !== "string" || url.length > 8192) return Promise.resolve(false);
-		const parsed = new URL(url);
-		if (!["https:", "http:", "mailto:"].includes(parsed.protocol)) return Promise.resolve(false);
-		return electron.shell.openExternal(parsed.href).then(() => true);
-	}
-	catch (_) { return Promise.resolve(false); }
-}
-
-function uiEnvironment() {
-	const app = {};
-	const fallback = { name: packageJson.productName, description: packageJson.description,
-		version: packageJson.version, copyright: "© VIEApps.net",
-		license: packageJson.license, homepage: packageJson.homepage, frameworks: "" };
-	for (const [key, value] of Object.entries(fallback)) app[key] = typeof environment.app[key] === "string" ? environment.app[key] : value;
-	return { icon: pathToFileURL(environment.icon).href, app,
-		platform: process.platform, versions: process.versions, canInstallUpdates: environment.canInstallUpdates };
-}
+const packageInfo = require("./package.json");
 
 const environment = {
-	icon: path.join(__dirname, "build/icon.png"),
+	icon: path.join(__dirname, packageInfo.build !== undefined ? packageInfo.build.icon : "icons/ngx.png"),
 	isDebug: process.argv.slice(2).some(arg => arg === "/dev" || arg === "/debug"),
 	openDevTools: process.argv.slice(2).some(arg => arg.startsWith("/dev")),
 	canInstallUpdates: false,
+	platform: process.platform,
+	versions: {
+		electron: process.versions.electron,
+		chrome: process.versions.chrome,
+		node: process.versions.node,
+		v8: process.versions.v8
+	},
+	package: {
+		productName: packageInfo.productName,
+		description: packageInfo.description,
+		version: packageInfo.version,
+		license: packageInfo.license,
+		homepage: packageInfo.homepage,
+		copyright: packageInfo.build !== undefined ? packageInfo.build.copyright : undefined
+	},
 	app: {
 		id: "vieapps-ngx-portals",
 		name: "NGX Portals",
 		description: "Manage information and related services of CMS Portals",
-		version: packageJson.version,
+		version: "1.0.0",
 		copyright: "© VIEApps.net",
 		license: "Apache-2.0",
-		frameworks: "ionic 5",
+		frameworks: "ionic 9 - angular 22",
 		homepage: "https://vieapps.net/"
 	},
 	session: {
@@ -75,47 +49,30 @@ const environment = {
 
 // -----------------------------------------------------
 
+// pages of this app run sandboxed, with context isolation and without Node.js integration - they talk to the main process via electron.preload.js
+function getWebPreferences(options) {
+	return Object.assign({
+		preload: path.join(__dirname, "electron.preload.js"),
+		contextIsolation: true,
+		sandbox: true,
+		nodeIntegration: false
+	}, options || {});
+}
+
+function getFileURL(...segments) {
+	return pathToFileURL(path.join(__dirname, ...segments)).href;
+}
+
 let appPrimaryWindow, appSecondaryWindow, chatWindow, aboutWindow, updateWindow;
 
 function createWindow(createOptions) {
 	createOptions = createOptions || {};
-	createOptions.options = createOptions.options || {};
-	const isApp = isLocalPage(createOptions.url, "src/app/index.html");
-	const isUI = isLocalPage(createOptions.url, "src/about/index.html") || isLocalPage(createOptions.url, "src/update/index.html");
-	createOptions.options.webPreferences = {
-		backgroundThrottling: false,
-		...(createOptions.options.webPreferences || {}),
-		nodeIntegration: false,
-		contextIsolation: true,
-		sandbox: true,
-		preload: isApp ? path.join(__dirname, "src/preload-app.js") : isUI ? path.join(__dirname, "src/preload-ui.js") : undefined
-	};
+	createOptions.options = createOptions.options || {}
+	createOptions.options.webPreferences = createOptions.options.webPreferences || getWebPreferences({
+		backgroundThrottling: false
+	});
 	const window = new electron.BrowserWindow(createOptions.options);
-	const relative = isApp ? "src/app/index.html" : isLocalPage(createOptions.url, "src/about/index.html")
-		? "src/about/index.html" : isUI ? "src/update/index.html" : undefined;
-	if (relative) {
-		trustedDocuments.set(window.webContents, { relative, url: createOptions.url });
-		// pushState changes Angular's file URL without replacing the trusted document.
-		window.webContents.on("did-navigate-in-page", (_, url, isMainFrame) => {
-			if (isMainFrame) trustedDocuments.set(window.webContents, { relative, url });
-		});
-		window.webContents.on("did-start-navigation", (_, url, isInPlace, isMainFrame) => {
-			if (isMainFrame && !isInPlace) {
-				if (isLocalPage(url, relative)) trustedDocuments.set(window.webContents, { relative, url });
-				else trustedDocuments.delete(window.webContents);
-			}
-		});
-	}
-	window.webContents.setWindowOpenHandler(({ url }) => {
-		openExternal(url).catch(() => {});
-		return { action: "deny" };
-	});
-	window.webContents.on("will-navigate", (event, url) => {
-		if (relative && !isLocalPage(url, relative)) {
-			event.preventDefault();
-			openExternal(url).catch(() => {});
-		}
-	});
+	window.loadURL(createOptions.url);
 	if (createOptions.onShow !== undefined) {
 		window.on("show", $event => createOptions.onShow($event));
 	}
@@ -134,12 +91,11 @@ function createWindow(createOptions) {
 	if (createOptions.onceDomReady !== undefined) {
 		window.webContents.once("dom-ready", $event => createOptions.onceDomReady($event));
 	}
-	window.loadURL(createOptions.url).catch(error => console.error("Window load failed:", error.message));
 	return window;
 }
 
 function showWindow(window, onNext) {
-	if (isAlive(window)) {
+	if (window !== undefined) {
 		window.show();
 	}
 	if (onNext !== undefined) {
@@ -160,7 +116,7 @@ function closeWindow(window, event) {
 
 function createAppWindow(isSecondInstance, onNext) {
 	let windowInstance = !!isSecondInstance ? appSecondaryWindow : appPrimaryWindow;
-	if (!isAlive(windowInstance)) {
+	if (windowInstance === undefined) {
 		const displaySize = electron.screen.getPrimaryDisplay().size;
 		const width = displaySize.width > 1680 ? 1680 : displaySize.width > 1440 ? 1440 : displaySize.width > 1366 ? 1366 : displaySize.width > 1280 ? 1280 : 1024;
 		const height = displaySize.height > 900 ? 900 : displaySize.height > 800 ? 800 : 700;
@@ -172,16 +128,18 @@ function createAppWindow(isSecondInstance, onNext) {
 				minHeight: 320,
 				icon: environment.icon,
 				show: false
-			}, 
-			url: localURL("src/app/index.html"),
-			onClose: $event => {
-				if (process.platform === "darwin") closeWindow(windowInstance, $event);
 			},
+			url: getFileURL("src/app/index.html"),
+			onClose: $event => windowInstance = process.platform === "darwin" ? closeWindow(windowInstance, $event) : undefined,
 			onClosed: () => {
-				if (isSecondInstance) appSecondaryWindow = undefined;
-				else appPrimaryWindow = undefined;
-				windowInstance = undefined;
-				if (process.platform !== "darwin" && !isAlive(appPrimaryWindow) && !isAlive(appSecondaryWindow)) electron.app.quit();
+				if (process.platform === "darwin") {
+					windowInstance = undefined;
+				}
+				else {
+					if (appPrimaryWindow === undefined && appSecondaryWindow === undefined) {
+						electron.app.quit();
+					}
+				}
 			},
 			onceDomReady: () => sendMessage(windowInstance, "dom-ready", environment, onNext),
 			onceShow: () => {
@@ -224,8 +182,8 @@ function createChatWindow(onNext) {
 				icon: environment.icon,
 				show: mode === "web",
 				webPreferences : preferences
-			}, 
-			url: mode === "web" ? "https://web.telegram.org/z/" : localURL("src/chat/index.html"),
+			},
+			url: mode === "web" ? "https://web.telegram.org/z/" : getFileURL("src/chat/index.html"),
 			onClose: $event => chatWindow = closeWindow(chatWindow, $event),
 			onClosed: () => chatWindow = undefined,
 			onReadyToShow: () => chatWindow.show()
@@ -249,12 +207,12 @@ function createAboutWindow(onNext) {
 				minimizable: false,
 				maximizable: false
 			},
-			url: localURL("src/about/index.html"),
+			url: getFileURL("src/about/index.html"),
 			onClose: $event => aboutWindow = closeWindow(aboutWindow, $event),
 			onClosed: () => aboutWindow = undefined,
 			onceDomReady: () => {
 				aboutWindow.setMenuBarVisibility(false);
-				sendMessage(aboutWindow, "dom-ready", uiEnvironment(), onNext);
+				sendMessage(aboutWindow, "dom-ready", environment, onNext);
 			},
 			onceShow: () => {
 				if (environment.openDevTools) {
@@ -280,12 +238,12 @@ function createUpdateWindow(onNext) {
 				minimizable: false,
 				maximizable: false
 			},
-			url: localURL("src/update/index.html"),
+			url: getFileURL("src/update/index.html"),
 			onClose: $event => updateWindow = closeWindow(updateWindow, $event),
 			onClosed: () => updateWindow = undefined,
 			onceDomReady: () => {
 				updateWindow.setMenuBarVisibility(false);
-				sendMessage(updateWindow, "dom-ready", uiEnvironment(), onNext);
+				sendMessage(updateWindow, "dom-ready", environment, onNext);
 			},
 			onceShow: () => {
 				if (environment.openDevTools) {
@@ -302,7 +260,7 @@ function createUpdateWindow(onNext) {
 function createMenu(authenticatedInfo) {
 	const template = [
 		{
-			label: environment.app !== undefined ? environment.app.name : electron.app.getName(),
+			label: environment.app !== undefined ? environment.app.name : electron.app.name,
 			submenu: [
 				{
 					label: "About",
@@ -338,21 +296,21 @@ function createMenu(authenticatedInfo) {
 				{ role: "cut" },
 				{ role: "copy" },
 				{ role: "paste" },
-				{ role: "pasteandmatchstyle" },
+				{ role: "pasteAndMatchStyle" },
 				{ role: "delete" },
-				{ role: "selectall" }
+				{ role: "selectAll" }
 			]
 		},
 		{
 			label: "View",
 			submenu: [
-				{ role: "resetzoom" },
-				{ role: "zoomin" },
-				{ role: "zoomout" },
+				{ role: "resetZoom" },
+				{ role: "zoomIn" },
+				{ role: "zoomOut" },
 				{ type: "separator" },
 				{ role: "togglefullscreen" },
 				{ type: "separator" },
-				{ role: "toggledevtools" }
+				{ role: "toggleDevTools" }
 			]
 		},
 		{
@@ -376,7 +334,7 @@ function createMenu(authenticatedInfo) {
 				role: "hide",
 			},
 			{
-				role: "hideothers",
+				role: "hideOthers",
 			},
 			{
 				role: "unhide",
@@ -397,7 +355,7 @@ function createMenu(authenticatedInfo) {
 }
 
 function sendMessage(window, event, data, onNext) {
-	if (isAlive(window)) {
+	if (window !== undefined) {
 		window.webContents.send(event, data);
 	}
 	if (onNext !== undefined) {
@@ -411,32 +369,21 @@ function sendMessageToApp(event, args, onNext) {
 
 // -----------------------------------------------------
 
-autoUpdater.logger = require("electron-log");
+autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = "info";
 autoUpdater.checkingForUpdates = false;
 autoUpdater.autoInstallOnAppQuit = false;
 
-async function checkForUpdates() {
+function checkForUpdates() {
 	if (process.env.NODE_ENV !== "development" && !autoUpdater.checkingForUpdates) {
 		sendMessage(updateWindow, "add-message", { message: "Checking for updates" });
 		autoUpdater.checkingForUpdates = true;
-		updateDownloaded = false;
-		sendMessage(updateWindow, "update-state", { ready: false, canInstall: false });
-		try {
-			const result = await autoUpdater.checkForUpdates();
-			if (result === null) {
-				autoUpdater.checkingForUpdates = false;
-				sendMessage(updateWindow, "add-message", { message: "Update check skipped: the updater is disabled while running from source without a development update configuration." });
-			}
-		}
-		catch (error) { autoUpdater.emit("error", error); }
+		autoUpdater.checkForUpdates();
 	}
 }
 
 autoUpdater.on("error", $error => {
-	updateDownloaded = false;
-	sendMessage(updateWindow, "update-state", { ready: false, canInstall: false });
-	sendMessage(updateWindow, "add-message", { message: "Error occurred while checking for updates, try again later.\nDetails: " + String(($error && $error.message) || $error) });
+	sendMessage(updateWindow, "add-message", { message: "Error occurred while checking for updates, try again later." + "<br/>" + "Details:" + JSON.stringify($error) });
 	autoUpdater.checkingForUpdates = false;
 });
 
@@ -446,7 +393,7 @@ autoUpdater.on("update-available", $info => {
 });
 
 autoUpdater.on("update-not-available", $info => {
-	sendMessage(updateWindow, "add-message", { message: "No new update is available, you are at the latest version (v" + $info.version + ")" });
+	sendMessage(updateWindow, "add-message", { message: "No new update is available, you are at the latest version (v" + environment.app.version + ")" });
 	autoUpdater.checkingForUpdates = false;
 });
 
@@ -478,7 +425,6 @@ autoUpdater.on("download-progress", $progress => {
 });
 
 autoUpdater.on("update-downloaded", $info => {
-	updateDownloaded = true;
 	autoUpdater.checkingForUpdates = false;
 	createUpdateWindow(() => {
 		sendMessage(updateWindow, "update-state", { ready: true, canInstall: environment.canInstallUpdates });
@@ -491,14 +437,33 @@ autoUpdater.on("before-quit-for-update", () => {
 	electron.app.willQuit = true;
 });
 
-electron.ipcMain.on("app.updater", (event, $request) => {
-	if (!trustedSender(event, [updateWindow], "src/update/index.html")) return;
-	if ("QuitAndInstall" === $request && updateDownloaded && environment.canInstallUpdates) {
+electron.ipcMain.on("app.updater", (_, $request) => {
+	if ("QuitAndInstall" === $request) {
 		autoUpdater.quitAndInstall();
 	}
 	else if ("Quit" === $request) {
 		electron.app.quit();
 	}
+});
+
+// ----------------------------------------------------------------------
+// replacements of electron.remote / shell usage of the renderer pages (sandboxed now)
+
+electron.ipcMain.on("window.close", $event => {
+	const window = electron.BrowserWindow.fromWebContents($event.sender);
+	if (window !== null) {
+		window.close();
+	}
+});
+
+electron.ipcMain.on("shell.openExternal", (_, $url) => {
+	try {
+		const url = new URL($url);
+		if (url.protocol === "https:" || url.protocol === "http:") {
+			electron.shell.openExternal(url.href);
+		}
+	}
+	catch { }
 });
 
 // ----------------------------------------------------------------------
@@ -532,18 +497,15 @@ electron.app.on("window-all-closed", () => {
 
 // ----------------------------------------------------------------------
 
-electron.ipcMain.on("App", (event, $info) => {
-	if (!trustedSender(event, [appPrimaryWindow, appSecondaryWindow], "src/app/index.html") || !isRecord($info)) return;
-	if ("Initialized" == $info.Type && isRecord($info.Data) && isRecord($info.Data.app) && isRecord($info.Data.URIs)) {
-		if (["name", "description", "version", "homepage", "copyright", "license", "frameworks"]
-			.some(key => $info.Data.app[key] !== undefined && typeof $info.Data.app[key] !== "string")) return;
+electron.ipcMain.on("App", (_, $info) => {
+	if (environment.isDebug) {
+		console.log("[IPC] App <= " + ($info !== undefined ? $info.Type : "(no info)"));
+	}
+	if ("Initialized" == $info.Type) {
 		const compareVersions = require("compare-versions");
-		environment.app = { ...environment.app, ...$info.Data.app };
+		environment.app = $info.Data.app;
 		environment.app.homepage = $info.Data.app.homepage || $info.Data.URIs.activations;
-		try {
-			environment.app.version = compareVersions(electron.app.getVersion(), environment.app.version) > 0 ? electron.app.getVersion() : environment.app.version;
-		}
-		catch (_) { environment.app.version = electron.app.getVersion(); }
+		environment.app.version = compareVersions.compareVersions(electron.app.getVersion(), environment.app.version) > 0 ? electron.app.getVersion() : environment.app.version;
 		environment.session = $info.Data.session;
 		environment.URIs = $info.Data.URIs;
 		environment.services = $info.Data.services;
@@ -551,13 +513,14 @@ electron.ipcMain.on("App", (event, $info) => {
 		environment.options = $info.Data.options;
 		environment.organizations = $info.Data.organizations;
 		environment.isDebug = !environment.isDebug ? environment.app.debug : true;
-		sendMessage(aboutWindow, "update-info", uiEnvironment());
+		sendMessage(aboutWindow, "update-info", environment);
 	}
 });
 
-electron.ipcMain.on("Users", (event, $info) => {
-	if (!trustedSender(event, [appPrimaryWindow, appSecondaryWindow], "src/app/index.html") || !isRecord($info)) return;
-	if ($info.Data !== undefined && !isRecord($info.Data)) return;
+electron.ipcMain.on("Users", (_, $info) => {
+	if (environment.isDebug) {
+		console.log("[IPC] Users <= " + ($info !== undefined ? $info.Type : "(no info)"));
+	}
 	if ("LogOut" === $info.Type || "LogIn" === $info.Type) {
 		environment.session = $info.Data;
 		environment.profile = {};
@@ -568,20 +531,8 @@ electron.ipcMain.on("Users", (event, $info) => {
 		}
 		createMenu();
 	}
-	else if ("Profile" == $info.Type && isRecord($info.Data) && isRecord(environment.session) && environment.session.token !== undefined) {
+	else if ("Profile" == $info.Type && environment.session !== undefined && environment.session.token !== undefined) {
 		environment.profile = $info.Data;
 		createMenu($info.Data.Name);
 	}
-});
-
-// Internal shell operations: no arbitrary window IDs, modules or OS commands.
-electron.ipcMain.on("app.window.close", event => {
-	const window = trustedSender(event, [aboutWindow], "src/about/index.html") ? aboutWindow
-		: trustedSender(event, [updateWindow], "src/update/index.html") ? updateWindow : undefined;
-	if (isAlive(window)) window.close();
-});
-electron.ipcMain.handle("app.openExternal", (event, url) => {
-	if (!trustedSender(event, [appPrimaryWindow, appSecondaryWindow], "src/app/index.html")
-		&& !trustedSender(event, [aboutWindow], "src/about/index.html")) return false;
-	return openExternal(url);
 });

@@ -14,17 +14,19 @@
 		"type": "git",
 		"url": "git@github.com:vieapps/Apps.Portals.git"
 	},
+	"engines": {
+		"node": ">=22.12.0"
+	},
 	"build": {
 		"appId": "net.vieapps.apps.portals.desktop",
-		"directories": {
-			"output": "dist"
-		},
+		"icon": "icons/ngx.png",
 		"copyright": "© VIEApps.net",
 		"asar": true,
 		"files": [
-			"build/**/*",
+			"icons/**/*",
 			"src/**/*",
-			"electron.js"
+			"electron.js",
+			"electron.preload.js"
 		],
 		"publish": [
 			{
@@ -35,41 +37,19 @@
 		"mac": {
 			"category": "public.app-category.productivity",
 			"target": [
-				{
-					"target": "dmg",
-					"arch": [
-						"universal"
-					]
-				},
-				{
-					"target": "zip",
-					"arch": [
-						"universal"
-					]
-				}
-			],
-			"minimumSystemVersion": "13.0.0"
+				{ "target": "dmg", "arch": ["universal"] },
+				{ "target": "zip", "arch": ["universal"] }
+			]
 		},
 		"win": {
 			"target": [
-				{
-					"target": "nsis",
-					"arch": [
-						"x64",
-						"arm64"
-					]
-				}
+				{ "target": "nsis", "arch": ["x64", "arm64"] }
 			]
 		},
 		"linux": {
 			"category": "Office",
 			"target": [
-				{
-					"target": "AppImage",
-					"arch": [
-						"x64"
-					]
-				}
+				{ "target": "AppImage", "arch": ["x64"] }
 			]
 		},
 		"dmg": {
@@ -98,25 +78,21 @@
 		}
 	},
 	"scripts": {
-		"postinstall": "node node_modules/electron/install.js",
 		"electron": "electron .",
-		"electron dist": "electron .",
 		"electron-build": "electron-builder --mac --win --linux --publish never",
 		"electron-build-mac": "electron-builder --mac --publish never",
 		"electron-build-win": "electron-builder --win --publish never",
 		"electron-build-linux": "electron-builder --linux --publish never"
 	},
 	"devDependencies": {
-		"electron": "45.2.3",
-		"electron-builder": "26.18.1"
+		"electron": "^45.2.3",
+		"electron-builder": "^26.18.0",
+		"node": "24.22.2"
 	},
 	"dependencies": {
-		"compare-versions": "^3.6.0",
+		"compare-versions": "^6.1.1",
 		"crypto-js": "^4.2.0",
-		"electron-log": "^4.4.6",
-		"electron-updater": "6.8.12"
-	},
-	"engines": {
-		"node": ">=22.12.0"
+		"electron-log": "^5.4.4",
+		"electron-updater": "^6.8.11"
 	}
 }

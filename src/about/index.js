@@ -1,29 +1,37 @@
-const desktop = window.desktopUI;
 let homepageURI = "https://vieapps.net";
 
-function updateInfo(info) {
-	const app = info.app;
-	homepageURI = app.homepage;
-	const license = app.license || "Apache-2.0";
-	const versions = ["electron", "chrome", "node", "v8"].map(name => name + " " + info.versions[name]).join(" - ");
-	document.title = "About " + app.name;
-	document.querySelector(".title").innerText = app.name;
-	document.querySelector(".description").innerText = app.description;
-	document.querySelector(".version").innerText = "v" + app.version;
-	document.querySelector(".copyright").innerText = app.copyright + " - Distributed under " + license + (license.includes("license") ? "" : " license");
-	document.querySelector(".frameworks").innerText = "Powered by " + (app.frameworks ? app.frameworks + " - " : "") + versions + " and love from " + app.copyright.replace("©", "").trim();
+function updateInfo($environment) {
+	const packageJson = $environment.package || {};
+
+	homepageURI = $environment.app.homepage || packageJson.homepage;
+	let license = $environment.app.license || packageJson.license;
+	license += license.indexOf("license") < 0 ? " license" : "";
+	const name = $environment.app.name || packageJson.productName;
+	const description = $environment.app.description || packageJson.description;
+	const version = $environment.app.version || packageJson.version;
+	const copyright = $environment.app.copyright || packageJson.copyright;
+	let frameworks = "";
+	["electron", "chrome", "node", "v8"].forEach(name => frameworks += (frameworks != "" ? " - " : "") + name + " " + $environment.versions[name]);
+	frameworks = ($environment.app.frameworks || packageJson.frameworks) + " - " + frameworks;
+
+	document.title = "About " + name;
+	document.querySelector(".title").innerText = name;
+	document.querySelector(".description").innerText = description;
+	document.querySelector(".version").innerText = "v" + version;
+	document.querySelector(".copyright").innerHTML = copyright + " - Distributed under " + license;
+	document.querySelector(".frameworks").innerHTML = "Powered by <b>" + frameworks + "</b> and love from " + copyright.replace("©", "").trim();
 }
 
-desktop.on("dom-ready", (_, info) => {
+window.app.on("dom-ready", $environment => {
 	const logo = document.querySelector(".logo");
-	logo.src = info.icon;
-	logo.addEventListener("click", () => desktop.openExternal(homepageURI).catch(console.error));
+	logo.src = $environment.icon;
+	logo.addEventListener("click", () => window.app.openExternal(homepageURI));
 	const action = document.getElementById("action");
-	action.classList.add(info.platform);
-	action.parentElement.classList.add(info.platform);
-	action.addEventListener("click", () => desktop.close());
+	action.classList.add(window.app.platform);
+	action.parentElement.classList.add(window.app.platform);
+	action.addEventListener("click", () => window.app.closeWindow());
 	document.getElementById("info").style.height = (window.innerHeight - 80) + "px";
-	updateInfo(info);
+	updateInfo($environment);
 });
 
-desktop.on("update-info", (_, info) => updateInfo(info));
+window.app.on("update-info", $environment => updateInfo($environment));
