@@ -1,10 +1,10 @@
-# VIEApps NGX CMS Portals with Electron
+# Electron shell for a SPA app
 
-Electron shell for the VIEApps NGX CMS Portals app on macOS, Windows and Linux.
+Electron shell for a SPA app on macOS, Windows and Linux.
 
 ## Frontend resources
 
-Build the app, then copy its contents (`www`) into `src/app`. The shell loads `src/app/index.html` through `file://`. This project does not build or migrate the frontend.
+Build the SPA app, then copy its contents (`www`) into `src/app`. The shell loads `src/app/index.html` through `file://`. This project does not build or migrate the frontend.
 
 ## Install and run
 
