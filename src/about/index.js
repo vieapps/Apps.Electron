@@ -1,9 +1,9 @@
-let homepageURI = "https://vieapps.net";
+let homepageURL = "https://vieapps.net";
 
 function updateInfo($environment) {
 	const packageJson = $environment.package || {};
 
-	homepageURI = $environment.app.homepage || packageJson.homepage;
+	homepageURL = $environment.app.homepage || packageJson.homepage;
 	let license = $environment.app.license || packageJson.license;
 	license += license.indexOf("license") < 0 ? " license" : "";
 	const name = $environment.app.name || packageJson.productName;
@@ -25,10 +25,10 @@ function updateInfo($environment) {
 window.app.on("dom-ready", $environment => {
 	const logo = document.querySelector(".logo");
 	logo.src = $environment.icon;
-	logo.addEventListener("click", () => window.app.openExternal(homepageURI));
+	logo.addEventListener("click", () => window.app.openExternal(homepageURL));
 	const action = document.getElementById("action");
-	action.classList.add(window.app.platform);
-	action.parentElement.classList.add(window.app.platform);
+	action.classList.add($environment.platform);
+	action.parentElement.classList.add($environment.platform);
 	action.addEventListener("click", () => window.app.closeWindow());
 	document.getElementById("info").style.height = (window.innerHeight - 80) + "px";
 	updateInfo($environment);

@@ -30,7 +30,7 @@ const environment = {
 		id: "vieapps-ngx-portals",
 		name: "NGX Portals",
 		description: "Manage information and related services of CMS Portals",
-		version: "1.0.0",
+		version: packageInfo.version,
 		copyright: "© VIEApps.net",
 		license: "Apache-2.0",
 		frameworks: "ionic 9 - angular 22",
@@ -130,15 +130,21 @@ function createAppWindow(isSecondInstance, onNext) {
 				show: false
 			},
 			url: getFileURL("src/app/index.html"),
-			onClose: $event => windowInstance = process.platform === "darwin" ? closeWindow(windowInstance, $event) : undefined,
-			onClosed: () => {
+			onClose: $event => {
 				if (process.platform === "darwin") {
-					windowInstance = undefined;
+					closeWindow(windowInstance, $event);
+				}
+			},
+			onClosed: () => {
+				if (isSecondInstance) {
+					appSecondaryWindow = undefined;
 				}
 				else {
-					if (appPrimaryWindow === undefined && appSecondaryWindow === undefined) {
-						electron.app.quit();
-					}
+					appPrimaryWindow = undefined;
+				}
+				windowInstance = undefined;
+				if (process.platform !== "darwin" && appPrimaryWindow === undefined && appSecondaryWindow === undefined) {
+					electron.app.quit();
 				}
 			},
 			onceDomReady: () => sendMessage(windowInstance, "dom-ready", environment, onNext),
@@ -374,11 +380,26 @@ autoUpdater.logger.transports.file.level = "info";
 autoUpdater.checkingForUpdates = false;
 autoUpdater.autoInstallOnAppQuit = false;
 
-function checkForUpdates() {
+async function checkForUpdates() {
 	if (process.env.NODE_ENV !== "development" && !autoUpdater.checkingForUpdates) {
 		sendMessage(updateWindow, "add-message", { message: "Checking for updates" });
 		autoUpdater.checkingForUpdates = true;
-		autoUpdater.checkForUpdates();
+		try {
+			const result = await autoUpdater.checkForUpdates();
+			if (result === null) {
+				autoUpdater.checkingForUpdates = false;
+				sendMessage(updateWindow, "add-message", { message: "Update check skipped: the updater is disabled while running from source without a development update configuration." });
+			}
+			else if (result.downloadPromise) {
+				await result.downloadPromise;
+			}
+		}
+		catch (error) {
+			// The updater normally emits error before rejecting; do not report it twice.
+			if (autoUpdater.checkingForUpdates) {
+				autoUpdater.emit("error", error);
+			}
+		}
 	}
 }
 

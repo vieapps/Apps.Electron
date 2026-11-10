@@ -17,20 +17,26 @@ function send(channel, data) {
 	ipcRenderer.send(channel, data);
 }
 
-function on(channel, listener) {
+function on(channel, listener, withEvent = false) {
 	if (!receiveChannels.includes(channel)) {
 		throw new Error("IPC channel is not allowed: " + channel);
 	}
-	const handler = (_, data) => listener(data);
-	listeners.set(listener, handler);
+	const handler = (_, data) => withEvent ? listener({}, data) : listener(data);
+	const handlers = listeners.get(channel) || [];
+	handlers.push({ listener, handler, withEvent });
+	listeners.set(channel, handlers);
 	ipcRenderer.on(channel, handler);
 }
 
-function off(channel, listener) {
-	const handler = listeners.get(listener);
-	if (handler !== undefined) {
-		ipcRenderer.removeListener(channel, handler);
-		listeners.delete(listener);
+function off(channel, listener, withEvent = false) {
+	const handlers = listeners.get(channel);
+	const index = handlers === undefined ? -1 : handlers.findLastIndex(entry => entry.listener === listener && entry.withEvent === withEvent);
+	if (index >= 0) {
+		ipcRenderer.removeListener(channel, handlers[index].handler);
+		handlers.splice(index, 1);
+		if (handlers.length === 0) {
+			listeners.delete(channel);
+		}
 	}
 }
 
@@ -38,8 +44,8 @@ function off(channel, listener) {
 const bridge = {
 	ipcRenderer: {
 		send: (channel, args) => send(channel, args),
-		on: (channel, listener) => on(channel, data => listener({}, data)),
-		off: (channel, listener) => off(channel, data => listener({}, data))
+		on: (channel, listener) => on(channel, listener, true),
+		off: (channel, listener) => off(channel, listener, true)
 	},
 	shell: {
 		closeWindow: () => ipcRenderer.send("window.close"),
