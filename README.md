@@ -14,8 +14,6 @@ Use Node >=22.12.0 (Node 24 recommended). Install dependencies with:
 npm install
 ```
 
-The project's `postinstall` runs Electron's binary installer automatically. No separate setup command or temporary Node toolchain is required. End users run the Node runtime bundled with Electron.
-
 Start the shell:
 
 ```sh
