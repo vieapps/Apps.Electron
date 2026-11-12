@@ -3,7 +3,7 @@
 	"name": "vieapps-ngx-portals-desktop",
 	"productName": "NGX Portals",
 	"description": "Manage information and related services of CMS Portals",
-	"version": "10.2611.1",
+	"version": "11.2611.1",
 	"license": "Apache-2.0",
 	"author": {
 		"name": "VIEApps.net",
@@ -37,19 +37,40 @@
 		"mac": {
 			"category": "public.app-category.productivity",
 			"target": [
-				{ "target": "dmg", "arch": ["universal"] },
-				{ "target": "zip", "arch": ["universal"] }
+				{
+					"target": "dmg",
+					"arch": [
+						"universal"
+					]
+				},
+				{
+					"target": "zip",
+					"arch": [
+						"universal"
+					]
+				}
 			]
 		},
 		"win": {
 			"target": [
-				{ "target": "nsis", "arch": ["x64", "arm64"] }
+				{
+					"target": "nsis",
+					"arch": [
+						"x64",
+						"arm64"
+					]
+				}
 			]
 		},
 		"linux": {
 			"category": "Office",
 			"target": [
-				{ "target": "AppImage", "arch": ["x64"] }
+				{
+					"target": "AppImage",
+					"arch": [
+						"x64"
+					]
+				}
 			]
 		},
 		"dmg": {
@@ -86,8 +107,7 @@
 	},
 	"devDependencies": {
 		"electron": "^45.2.3",
-		"electron-builder": "^26.18.0",
-		"node": "24.22.2"
+		"electron-builder": "^26.18.0"
 	},
 	"dependencies": {
 		"compare-versions": "^6.1.1",
